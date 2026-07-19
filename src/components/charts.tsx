@@ -41,11 +41,15 @@ export function TimeSeriesChart({
   series,
   height = 260,
   showLegend = true,
+  referenceX,
+  referenceLabel,
 }: {
   data: readonly Record<string, unknown>[];
   series: Series[];
   height?: number;
   showLegend?: boolean;
+  referenceX?: number;
+  referenceLabel?: string;
 }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -72,6 +76,14 @@ export function TimeSeriesChart({
             wrapperStyle={{ fontSize: 12, color: CHART.secondaryInk }}
             iconType="circle"
             iconSize={8}
+          />
+        )}
+        {referenceX !== undefined && (
+          <ReferenceLine
+            x={referenceX}
+            stroke={CHART.secondaryInk}
+            strokeDasharray="4 4"
+            label={{ value: referenceLabel ?? String(referenceX), position: 'top', fill: CHART.secondaryInk, fontSize: 11 }}
           />
         )}
         {series.map((s) => (

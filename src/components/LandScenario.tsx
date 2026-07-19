@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { PlannerState } from '../lib/types';
 import { calcEMI, daafBalanceAtYear, formatINR, formatINRFull, runProjection } from '../lib/finance';
 import { Card, NumberField, Pill, SectionTitle, StatTile } from './ui';
@@ -14,6 +14,8 @@ export function LandScenario({
 }) {
   const patchLand = (key: keyof PlannerState['land'], v: number) =>
     setState((s) => ({ ...s, land: { ...s.land, [key]: v } }));
+
+  const [scenarioLabel, setScenarioLabel] = useState<string>('Expected');
 
   const daafAtPurchase = useMemo(() => daafBalanceAtYear(state, state.land.purchaseYear), [state]);
   const downPayment = Math.min(daafAtPurchase, state.land.landPriceEstimate);
@@ -85,40 +87,83 @@ export function LandScenario({
         />
       </Card>
 
-      <div className="grid grid-cols-1 gap-5">
-        {scenarios.map((sc) => (
-          <Card key={sc.label}>
-            <SectionTitle
-              title={`${sc.label} scenario`}
-              subtitle={`Growth delta: ${sc.deltaPct >= 0 ? '+' : ''}${sc.deltaPct}pp applied to equity/debt/gold/NPS/DAAF rates`}
-            />
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <div>
-                <p className="mb-2 text-xs font-medium text-zinc-500">Net worth — with vs. without land</p>
-                <TimeSeriesChart
-                  data={sc.data}
-                  series={[
-                    { key: 'netWorthWithLand', label: 'Incl. land', color: CURVE_COLORS.withLand },
-                    { key: 'netWorthWithoutLand', label: 'Excl. land (liquid)', color: CURVE_COLORS.withoutLand },
-                  ]}
-                />
-              </div>
-              <div>
-                <p className="mb-2 text-xs font-medium text-zinc-500">Cumulative interest paid on loan</p>
-                <TimeSeriesChart
-                  data={sc.data}
-                  series={[{ key: 'cumulativeInterest', label: 'Cumulative interest', color: CURVE_COLORS.interest }]}
-                  showLegend={false}
-                />
-              </div>
-            </div>
-            <div
-              className="mt-2 h-1 w-10 rounded-full"
-              style={{ backgroundColor: SCENARIO_COLORS[sc.label] }}
-            />
-          </Card>
-        ))}
-      </div>
+      <Card>
+        <SectionTitle
+          title="Net worth growth"
+          subtitle="Your current net worth, projected forward with the reduced SIP after the land purchase kicks in"
+        />
+        <div className="mb-4 flex gap-2">
+          {state.scenarioDeltas.map((sd) => (
+            <button
+              key={sd.label}
+              onClick={() => setScenarioLabel(sd.label)}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                scenarioLabel === sd.label ? 'border-transparent text-zinc-950' : 'border-zinc-700 text-zinc-400 hover:bg-zinc-800'
+              }`}
+              style={scenarioLabel === sd.label ? { backgroundColor: SCENARIO_COLORS[sd.label] } : undefined}
+            >
+              {sd.label} growth
+            </button>
+          ))}
+        </div>
+
+        {(() => {
+          const active = scenarios.find((sc) => sc.label === scenarioLabel) ?? scenarios[0];
+          return (
+            <>
+              <p className="mb-2 text-xs text-zinc-500">
+                <span className="font-medium text-zinc-300">Blue line</span> = your full net worth if you count the land as an
+                asset once you own it. <span className="font-medium text-zinc-300">Teal line</span> = just your liquid
+                investments (cash, SIPs, DAAF, etc.) — the land is left out. Both already reflect the lower SIP from{' '}
+                {state.land.purchaseYear} onward.
+              </p>
+              <TimeSeriesChart
+                data={active.data}
+                height={320}
+                referenceX={state.land.purchaseYear}
+                referenceLabel={`Purchase (${state.land.purchaseYear})`}
+                series={[
+                  { key: 'netWorthWithLand', label: 'Net worth incl. land', color: CURVE_COLORS.withLand },
+                  { key: 'netWorthWithoutLand', label: 'Liquid net worth (no land)', color: CURVE_COLORS.withoutLand },
+                ]}
+              />
+            </>
+          );
+        })()}
+
+        <div className="mt-6 grid grid-cols-3 gap-3 border-t border-zinc-800 pt-5">
+          {scenarios.map((sc) => {
+            const final = sc.data[sc.data.length - 1];
+            return (
+              <button
+                key={sc.label}
+                onClick={() => setScenarioLabel(sc.label)}
+                className={`rounded-xl border p-3 text-left transition ${
+                  scenarioLabel === sc.label ? 'border-zinc-600 bg-zinc-800/60' : 'border-zinc-800 hover:border-zinc-700'
+                }`}
+              >
+                <div className="mb-1 flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: SCENARIO_COLORS[sc.label] }} />
+                  <span className="text-xs text-zinc-400">{sc.label}</span>
+                </div>
+                <p className="text-sm font-semibold text-zinc-100">{formatINR(final?.netWorthWithLand ?? 0)}</p>
+                <p className="text-[11px] text-zinc-600">net worth by {state.projectionEndYear}</p>
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+
+      <Card>
+        <SectionTitle title="Cumulative interest paid on the loan" subtitle={`${scenarioLabel} growth scenario`} />
+        <TimeSeriesChart
+          data={(scenarios.find((sc) => sc.label === scenarioLabel) ?? scenarios[0]).data}
+          series={[{ key: 'cumulativeInterest', label: 'Cumulative interest', color: CURVE_COLORS.interest }]}
+          showLegend={false}
+          referenceX={state.land.purchaseYear}
+          referenceLabel={`Purchase (${state.land.purchaseYear})`}
+        />
+      </Card>
     </div>
   );
 }
