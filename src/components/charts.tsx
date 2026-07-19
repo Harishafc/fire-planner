@@ -18,6 +18,7 @@ export interface Series {
   key: string;
   label: string;
   color: string;
+  dashed?: boolean;
 }
 
 function CustomTooltip({ active, payload, label }: any) {
@@ -94,6 +95,7 @@ export function TimeSeriesChart({
             name={s.label}
             stroke={s.color}
             strokeWidth={2}
+            strokeDasharray={s.dashed ? '5 4' : undefined}
             dot={false}
             activeDot={{ r: 4 }}
           />

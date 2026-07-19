@@ -42,6 +42,7 @@ export const CURVE_COLORS = {
   withLand: CATEGORICAL.blue,
   withoutLand: CATEGORICAL.aqua,
   interest: CATEGORICAL.orange,
+  fireTarget: CATEGORICAL.yellow,
 };
 
 export const CASHFLOW_COLORS = {

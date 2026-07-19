@@ -36,6 +36,17 @@ export function LandScenario({
   const sipShortfall = emi - totalSip;
   const cashFlowData = scenarios[0]?.data ?? [];
 
+  const fireMultiplier = state.fireSwrPct > 0 ? 100 / state.fireSwrPct : 25;
+  const withFireTarget = (data: typeof cashFlowData) =>
+    data.map((d) => ({ ...d, fireTarget: d.monthlyExpenseThisYear * 12 * fireMultiplier }));
+  // Inflation-adjusted expenses don't depend on the investment-growth scenario, so any scenario's
+  // final year gives the same FIRE target — used to judge every scenario's final net worth against it.
+  const finalFireTarget = (() => {
+    const data = scenarios[0]?.data;
+    const last = data?.[data.length - 1];
+    return last ? last.monthlyExpenseThisYear * 12 * fireMultiplier : 0;
+  })();
+
   const currentYear = new Date().getFullYear();
   const ageAtPurchase = state.currentAge + (state.land.purchaseYear - currentYear);
   const targetAtPurchase = targetAllocationForAge(ageAtPurchase);
@@ -128,24 +139,40 @@ export function LandScenario({
 
         {(() => {
           const active = scenarios.find((sc) => sc.label === scenarioLabel) ?? scenarios[0];
+          const chartData = withFireTarget(active.data);
+          const final = chartData[chartData.length - 1];
+          const enough = final ? final.netWorthWithoutLand >= final.fireTarget : false;
           return (
             <>
               <p className="mb-2 text-xs text-zinc-500">
                 <span className="font-medium text-zinc-300">Blue line</span> = your full net worth if you count the land as an
                 asset once you own it. <span className="font-medium text-zinc-300">Teal line</span> = just your liquid
-                investments (cash, SIPs, DAAF, etc.) — the land is left out. Both already reflect the lower SIP from{' '}
-                {state.land.purchaseYear} onward.
+                investments (cash, SIPs, DAAF, etc.) — the land is left out.{' '}
+                <span className="font-medium text-zinc-300">Dashed yellow line</span> = what your monthly expense today (₹
+                {state.monthlyExpense.toLocaleString('en-IN')}) actually costs to sustain forever in that future year, after{' '}
+                {state.inflationRate}% inflation — your real "enough to retire" bar. Both net-worth lines already reflect the
+                lower SIP from {state.land.purchaseYear} onward.
               </p>
               <TimeSeriesChart
-                data={active.data}
+                data={chartData}
                 height={320}
                 referenceX={state.land.purchaseYear}
                 referenceLabel={`Purchase (${state.land.purchaseYear})`}
                 series={[
                   { key: 'netWorthWithLand', label: 'Net worth incl. land', color: CURVE_COLORS.withLand },
                   { key: 'netWorthWithoutLand', label: 'Liquid net worth (no land)', color: CURVE_COLORS.withoutLand },
+                  { key: 'fireTarget', label: 'FIRE target (inflation-adjusted)', color: CURVE_COLORS.fireTarget, dashed: true },
                 ]}
               />
+              {final && (
+                <p className={`mt-3 text-xs ${enough ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  By {state.projectionEndYear}: your ₹{state.monthlyExpense.toLocaleString('en-IN')}/mo expense today becomes ≈{' '}
+                  {formatINR(final.monthlyExpenseThisYear)}/mo (₹{formatINR(final.monthlyExpenseThisYear * 12)}/yr) — needing a
+                  FIRE corpus of ≈ {formatINR(final.fireTarget)}. Your projected liquid net worth then is ≈{' '}
+                  {formatINR(final.netWorthWithoutLand)}, which is{' '}
+                  {enough ? 'enough ✓' : `short by ${formatINR(final.fireTarget - final.netWorthWithoutLand)}`}.
+                </p>
+              )}
             </>
           );
         })()}
@@ -153,6 +180,7 @@ export function LandScenario({
         <div className="mt-6 grid grid-cols-3 gap-3 border-t border-zinc-800 pt-5">
           {scenarios.map((sc) => {
             const final = sc.data[sc.data.length - 1];
+            const enough = final ? final.netWorthWithoutLand >= finalFireTarget : false;
             return (
               <button
                 key={sc.label}
@@ -164,9 +192,14 @@ export function LandScenario({
                 <div className="mb-1 flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full" style={{ backgroundColor: SCENARIO_COLORS[sc.label] }} />
                   <span className="text-xs text-zinc-400">{sc.label}</span>
+                  <span className={`ml-auto text-xs ${enough ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {enough ? '✓ enough' : '✗ short'}
+                  </span>
                 </div>
                 <p className="text-sm font-semibold text-zinc-100">{formatINR(final?.netWorthWithLand ?? 0)}</p>
-                <p className="text-[11px] text-zinc-600">net worth by {state.projectionEndYear}</p>
+                <p className="text-[11px] text-zinc-600">
+                  net worth by {state.projectionEndYear} · FIRE target ≈ {formatINR(finalFireTarget)}
+                </p>
               </button>
             );
           })}
