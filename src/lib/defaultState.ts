@@ -7,6 +7,7 @@ export const defaultState: PlannerState = {
   monthlySipTotal: 55000,
   monthlyRd: 10000,
   monthlyNpsContribution: 7000,
+  monthlyTravelContribution: 5000,
   holdings: {
     cash: 500000,
     debt: 800000,
@@ -16,6 +17,7 @@ export const defaultState: PlannerState = {
     gold: 250000,
     nps: 350000,
     epf: 900000,
+    travelFund: 50000,
   },
   monthlyExpense: 60000,
   inflationRate: 6,
@@ -28,6 +30,7 @@ export const defaultState: PlannerState = {
     daaf: 10,
     land: 8,
     epf: 8.25,
+    travel: 7,
   },
   daaf: {
     balance: 600000,
@@ -37,6 +40,7 @@ export const defaultState: PlannerState = {
     ],
   },
   salary: {
+    combinedInHandSalary: 150000,
     yourBasicSalary: 100000,
     yourEpfEmployeePct: 17,
     yourEpfEmployerPct: 12,

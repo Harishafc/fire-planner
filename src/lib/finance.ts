@@ -15,7 +15,7 @@ export function targetAllocationForAge(age: number): AllocationTarget {
   return { safePct, riskyPct: 100 - safePct };
 }
 
-/** Actual current portfolio split: NPS + EPF count as safe, DAAF splits by its equity-equivalent %. */
+/** Actual current portfolio split: NPS + EPF + travel fund count as safe, DAAF splits by its equity-equivalent %. */
 export function currentAllocation(state: PlannerState): AllocationTarget {
   const h = state.holdings;
   const netWorth = currentNetWorth(state);
@@ -23,39 +23,44 @@ export function currentAllocation(state: PlannerState): AllocationTarget {
   const daafRisky = (state.daaf.balance * state.daaf.equityEquivalentPct) / 100;
   const daafSafe = state.daaf.balance - daafRisky;
   const risky = equityTotal(h) + daafRisky;
-  const safe = h.cash + h.debt + h.gold + h.nps + h.epf + daafSafe;
+  const safe = h.cash + h.debt + h.gold + h.nps + h.epf + h.travelFund + daafSafe;
   return { safePct: (safe / netWorth) * 100, riskyPct: (risky / netWorth) * 100 };
 }
 
-/** Today's monthly household cash-flow check: salary minus every committed outflow. */
+/**
+ * Today's monthly household cash-flow check. EPF and NPS are payroll-style deductions that never
+ * reach your bank account, so "combined in-hand salary" already excludes them — only what you
+ * actively pay out of that in-hand money (RD, SIP, Travel, Expenses) reduces the surplus.
+ */
 export interface CashFlowCheck {
-  salaryTotal: number;
-  employeeEpfOutflow: number;
-  npsOutflow: number;
+  inHandSalary: number;
   rdOutflow: number;
   sipOutflow: number;
+  travelOutflow: number;
   expenseOutflow: number;
   surplus: number;
+  epfInfo: number;
+  npsInfo: number;
 }
 
 export function cashFlowCheck(state: PlannerState): CashFlowCheck {
+  const inHandSalary = state.salary.combinedInHandSalary;
+  const rdOutflow = state.monthlyRd;
+  const sipOutflow = state.monthlySipTotal;
+  const travelOutflow = state.monthlyTravelContribution;
+  const expenseOutflow = state.monthlyExpense;
+
+  const surplus = inHandSalary - rdOutflow - sipOutflow - travelOutflow - expenseOutflow;
+
   const s = state.salary;
   const currentYear = new Date().getFullYear();
   const spouseActive = s.spouseBasicSalary > 0 && currentYear >= s.spouseIncomeStartYear;
+  const epfInfo =
+    (s.yourBasicSalary * (s.yourEpfEmployeePct + s.yourEpfEmployerPct)) / 100 +
+    (spouseActive ? (s.spouseBasicSalary * (s.spouseEpfEmployeePct + s.spouseEpfEmployerPct)) / 100 : 0);
+  const npsInfo = state.monthlyNpsContribution;
 
-  const salaryTotal = s.yourBasicSalary + (spouseActive ? s.spouseBasicSalary : 0);
-  const employeeEpfOutflow =
-    (s.yourBasicSalary * s.yourEpfEmployeePct) / 100 +
-    (spouseActive ? (s.spouseBasicSalary * s.spouseEpfEmployeePct) / 100 : 0);
-
-  const npsOutflow = state.monthlyNpsContribution;
-  const rdOutflow = state.monthlyRd;
-  const sipOutflow = state.monthlySipTotal;
-  const expenseOutflow = state.monthlyExpense;
-
-  const surplus = salaryTotal - employeeEpfOutflow - npsOutflow - rdOutflow - sipOutflow - expenseOutflow;
-
-  return { salaryTotal, employeeEpfOutflow, npsOutflow, rdOutflow, sipOutflow, expenseOutflow, surplus };
+  return { inHandSalary, rdOutflow, sipOutflow, travelOutflow, expenseOutflow, surplus, epfInfo, npsInfo };
 }
 
 export function calcEMI(principal: number, annualRatePct: number, years: number): number {
@@ -74,7 +79,7 @@ export function equityTotal(h: Holdings): number {
 export function currentNetWorth(state: PlannerState): number {
   const h = state.holdings;
   return (
-    h.cash + h.debt + equityTotal(h) + h.gold + h.nps + h.epf + state.daaf.balance
+    h.cash + h.debt + equityTotal(h) + h.gold + h.nps + h.epf + h.travelFund + state.daaf.balance
   );
 }
 
@@ -124,6 +129,7 @@ function applyDelta(rates: GrowthRates, deltaPct: number): GrowthRates {
     daaf: rates.daaf + deltaPct,
     land: rates.land,
     epf: rates.epf,
+    travel: rates.travel + deltaPct,
   };
 }
 
@@ -147,6 +153,7 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
     daaf: monthlyRate(rates.daaf),
     land: monthlyRate(rates.land),
     epf: monthlyRate(rates.epf),
+    travel: monthlyRate(rates.travel),
   };
 
   let cash = state.holdings.cash;
@@ -155,6 +162,7 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
   let gold = state.holdings.gold;
   let nps = state.holdings.nps;
   let epf = state.holdings.epf;
+  let travelFund = state.holdings.travelFund;
   let daaf = state.daaf.balance;
   let land = 0;
 
@@ -189,6 +197,7 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
     gold *= 1 + mRate.gold;
     nps *= 1 + mRate.nps;
     epf *= 1 + mRate.epf;
+    travelFund *= 1 + mRate.travel;
     daaf *= 1 + mRate.daaf;
     if (land > 0) land *= 1 + mRate.land;
 
@@ -236,6 +245,7 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
 
     epf += yourEpfMonthly + spouseEpfMonthly;
     nps += state.monthlyNpsContribution;
+    travelFund += state.monthlyTravelContribution;
 
     // age-based target allocation splits the investable SIP into equity (risky) and DAAF (safe)
     const age = state.currentAge + yearsElapsed;
@@ -250,7 +260,7 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
     debt += state.monthlyRd;
 
     if (month === 11) {
-      const liquidNetWorth = cash + debt + equity + gold + nps + epf + daaf;
+      const liquidNetWorth = cash + debt + equity + gold + nps + epf + travelFund + daaf;
       const monthlyExpenseThisYear = state.monthlyExpense * Math.pow(1 + state.inflationRate / 100, yearsElapsed);
       snapshots.push({
         year,
@@ -260,6 +270,7 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
         gold,
         nps,
         epf,
+        travelFund,
         daaf,
         land,
         loanOutstanding: loanPrincipal,

@@ -74,18 +74,18 @@ export function Inputs({
             prefix="₹"
           />
           <NumberField
-            label="Monthly NPS contribution"
-            value={state.monthlyNpsContribution}
-            onChange={(v) => setState((s) => ({ ...s, monthlyNpsContribution: v }))}
+            label="Monthly Travel fund"
+            value={state.monthlyTravelContribution}
+            onChange={(v) => setState((s) => ({ ...s, monthlyTravelContribution: v }))}
             prefix="₹"
-            hint="Fixed — doesn't scale with salary, so you can target a tax-saving cap"
+            hint="A separate savings pot for trips, like a dedicated RD"
           />
           <NumberField
             label="Monthly expense"
             value={state.monthlyExpense}
             onChange={(v) => setState((s) => ({ ...s, monthlyExpense: v }))}
             prefix="₹"
-            hint="Grows with inflation in projections"
+            hint="Basic household needs only — grows with inflation"
           />
         </div>
       </Card>
@@ -118,23 +118,41 @@ export function Inputs({
       <Card>
         <SectionTitle
           title="Household income"
-          subtitle="Drives EPF/VPF contributions and the yearly SIP step-up — uses basic salary as a take-home proxy"
+          subtitle="In-hand salary drives your cash-flow check; basic salary + EPF% only drive how fast your EPF balance grows"
         />
         <div className="mb-4">
-          <p className="mb-2 text-xs font-semibold text-zinc-400">You</p>
+          <NumberField
+            label="Combined in-hand salary"
+            value={state.salary.combinedInHandSalary}
+            onChange={(v) => patchSalary('combinedInHandSalary', v)}
+            prefix="₹"
+            hint="You + spouse, after EPF/NPS/tax are already deducted — what actually lands in the bank"
+          />
+        </div>
+        <div className="mb-4 grid grid-cols-2 gap-4">
+          <NumberField
+            label="Monthly NPS (auto-deducted)"
+            value={state.monthlyNpsContribution}
+            onChange={(v) => setState((s) => ({ ...s, monthlyNpsContribution: v }))}
+            prefix="₹"
+            hint="Fixed, like EPF — doesn't reduce in-hand salary further"
+          />
+          <NumberField
+            label="Salary growth"
+            value={state.salary.salaryGrowthPct}
+            onChange={(v) => patchSalary('salaryGrowthPct', v)}
+            suffix="%/yr"
+            hint="Steps up EPF contributions and your SIP each year"
+          />
+        </div>
+        <div className="border-t border-zinc-800 pt-4">
+          <p className="mb-2 text-xs font-semibold text-zinc-400">You — basic salary (EPF calc only)</p>
           <div className="grid grid-cols-2 gap-4">
             <NumberField
               label="Your basic salary"
               value={state.salary.yourBasicSalary}
               onChange={(v) => patchSalary('yourBasicSalary', v)}
               prefix="₹"
-            />
-            <NumberField
-              label="Salary growth"
-              value={state.salary.salaryGrowthPct}
-              onChange={(v) => patchSalary('salaryGrowthPct', v)}
-              suffix="%/yr"
-              hint="Also steps up your SIP each year"
             />
             <NumberField
               label="EPF + VPF (employee)"
@@ -151,8 +169,8 @@ export function Inputs({
             />
           </div>
         </div>
-        <div className="border-t border-zinc-800 pt-4">
-          <p className="mb-2 text-xs font-semibold text-zinc-400">Spouse</p>
+        <div className="border-t border-zinc-800 pt-4 mt-4">
+          <p className="mb-2 text-xs font-semibold text-zinc-400">Spouse — basic salary (EPF calc only)</p>
           <div className="grid grid-cols-2 gap-4">
             <NumberField
               label="Spouse basic salary"
@@ -193,6 +211,7 @@ export function Inputs({
           <NumberField label="Gold" value={state.holdings.gold} onChange={(v) => patchHoldings('gold', v)} prefix="₹" />
           <NumberField label="NPS" value={state.holdings.nps} onChange={(v) => patchHoldings('nps', v)} prefix="₹" />
           <NumberField label="EPF (incl. VPF)" value={state.holdings.epf} onChange={(v) => patchHoldings('epf', v)} prefix="₹" />
+          <NumberField label="Travel fund" value={state.holdings.travelFund} onChange={(v) => patchHoldings('travelFund', v)} prefix="₹" />
         </div>
       </Card>
 
@@ -288,6 +307,7 @@ export function Inputs({
           <NumberField label="Gold" value={state.growthRates.gold} onChange={(v) => patchGrowth('gold', v)} suffix="%/yr" />
           <NumberField label="NPS" value={state.growthRates.nps} onChange={(v) => patchGrowth('nps', v)} suffix="%/yr" />
           <NumberField label="EPF" value={state.growthRates.epf} onChange={(v) => patchGrowth('epf', v)} suffix="%/yr" hint="Govt-notified rate, ~8.25%" />
+          <NumberField label="Travel fund" value={state.growthRates.travel} onChange={(v) => patchGrowth('travel', v)} suffix="%/yr" />
           <NumberField label="Land appreciation" value={state.growthRates.land} onChange={(v) => patchGrowth('land', v)} suffix="%/yr" />
           <NumberField
             label="Projection end year"

@@ -23,14 +23,13 @@ export function Overview({ state }: { state: PlannerState }) {
 
   const breakdown = [
     { key: 'cash', label: 'Cash / Emergency', value: h.cash },
-    { key: 'debt', label: 'Debt / Fixed income', value: h.debt },
+    { key: 'debt', label: 'Debt / Fixed income', value: h.debt + h.travelFund + state.daaf.balance },
     { key: 'equityIndianMF', label: 'Equity - Indian MF', value: h.equityIndianMF },
     { key: 'equityOverseas', label: 'Equity - Overseas', value: h.equityOverseas },
     { key: 'equityStocks', label: 'Equity - Stocks', value: h.equityStocks },
     { key: 'gold', label: 'Gold', value: h.gold },
     { key: 'nps', label: 'NPS', value: h.nps },
     { key: 'epf', label: 'EPF (incl. VPF)', value: h.epf },
-    { key: 'daaf', label: 'Parag Parikh DAAF', value: state.daaf.balance },
   ].filter((b) => b.value > 0);
 
   const total = breakdown.reduce((a, b) => a + b.value, 0) || 1;
@@ -40,7 +39,7 @@ export function Overview({ state }: { state: PlannerState }) {
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
       <Card className="lg:col-span-2">
-        <SectionTitle title="Net worth composition" subtitle={formatINRFull(netWorth)} />
+        <SectionTitle title="Net worth composition" subtitle={`${formatINRFull(netWorth)} · Debt / Fixed income includes DAAF + Travel fund`} />
         <div className="mb-4 flex h-3 w-full overflow-hidden rounded-full border border-zinc-800">
           {breakdown.map((b) => (
             <div
@@ -93,7 +92,7 @@ export function Overview({ state }: { state: PlannerState }) {
             </div>
             <div className="flex justify-between text-xs text-zinc-400">
               <span>Risky (equity): {target.riskyPct.toFixed(0)}%</span>
-              <span>Safe (debt/cash/gold/NPS/EPF): {target.safePct.toFixed(0)}%</span>
+              <span>Safe (debt/cash/gold/NPS/EPF/Travel): {target.safePct.toFixed(0)}%</span>
             </div>
           </div>
           <div>
@@ -120,20 +119,24 @@ export function Overview({ state }: { state: PlannerState }) {
       <Card className="lg:col-span-3">
         <SectionTitle
           title="Monthly cash-flow check"
-          subtitle="Salary minus every committed outflow — uses basic salary as a take-home proxy, so treat this as a floor, not exact"
+          subtitle="Combined in-hand salary minus what you actively pay out of it — EPF & NPS are already deducted before it reaches you"
         />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <StatTile label="Salary" value={formatINR(cashFlow.salaryTotal)} sub="You + spouse (if active)" />
-          <StatTile label="EPF (your share)" value={`− ${formatINR(cashFlow.employeeEpfOutflow)}`} sub="Employer match excluded" />
-          <StatTile label="NPS" value={`− ${formatINR(cashFlow.npsOutflow)}`} />
-          <StatTile label="RD + SIP" value={`− ${formatINR(cashFlow.rdOutflow + cashFlow.sipOutflow)}`} />
+          <StatTile label="In-hand salary" value={formatINR(cashFlow.inHandSalary)} sub="You + spouse, combined" />
+          <StatTile label="RD" value={`− ${formatINR(cashFlow.rdOutflow)}`} />
+          <StatTile label="SIP" value={`− ${formatINR(cashFlow.sipOutflow)}`} />
+          <StatTile label="Travel fund" value={`− ${formatINR(cashFlow.travelOutflow)}`} />
           <StatTile label="Expenses" value={`− ${formatINR(cashFlow.expenseOutflow)}`} />
           <StatTile label={cashFlow.surplus >= 0 ? 'Surplus' : 'Deficit'} value={formatINR(cashFlow.surplus)} />
         </div>
+        <p className="mt-4 text-xs text-zinc-500">
+          Already deducted before in-hand pay, for reference only: EPF ≈ {formatINR(cashFlow.epfInfo)}/mo, NPS ={' '}
+          {formatINR(cashFlow.npsInfo)}/mo.
+        </p>
         {cashFlow.surplus < 0 && (
-          <p className="mt-4 text-xs text-rose-400">
-            You're committing {formatINR(Math.abs(cashFlow.surplus))} more per month than your salary covers. Consider
-            trimming SIP, RD, or expenses — or double check your salary figure.
+          <p className="mt-2 text-xs text-rose-400">
+            You're committing {formatINR(Math.abs(cashFlow.surplus))} more per month than your in-hand salary covers.
+            Consider trimming SIP, RD, Travel, or expenses — or double check your salary figure.
           </p>
         )}
       </Card>

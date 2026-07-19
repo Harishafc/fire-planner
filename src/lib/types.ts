@@ -7,6 +7,7 @@ export interface Holdings {
   gold: number;
   nps: number;
   epf: number;
+  travelFund: number;
 }
 
 export interface GrowthRates {
@@ -18,9 +19,11 @@ export interface GrowthRates {
   daaf: number;
   land: number;
   epf: number;
+  travel: number;
 }
 
 export interface SalaryInputs {
+  combinedInHandSalary: number;
   yourBasicSalary: number;
   yourEpfEmployeePct: number;
   yourEpfEmployerPct: number;
@@ -74,6 +77,7 @@ export interface PlannerState {
   monthlySipTotal: number;
   monthlyRd: number;
   monthlyNpsContribution: number;
+  monthlyTravelContribution: number;
   holdings: Holdings;
   monthlyExpense: number;
   inflationRate: number;
@@ -96,6 +100,7 @@ export interface YearSnapshot {
   gold: number;
   nps: number;
   epf: number;
+  travelFund: number;
   daaf: number;
   land: number;
   loanOutstanding: number;
