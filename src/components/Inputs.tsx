@@ -118,24 +118,15 @@ export function Inputs({
       <Card>
         <SectionTitle
           title="Household income"
-          subtitle="In-hand salary drives your cash-flow check; basic salary + EPF% only drive how fast your EPF balance grows"
+          subtitle="In-hand salary drives your cash-flow check; everything below is automatic, pre-deducted, and doesn't reduce it further"
         />
-        <div className="mb-4">
+        <div className="mb-4 grid grid-cols-2 gap-4">
           <NumberField
             label="Combined in-hand salary"
             value={state.salary.combinedInHandSalary}
             onChange={(v) => patchSalary('combinedInHandSalary', v)}
             prefix="₹"
-            hint="You + spouse, after EPF/NPS/tax are already deducted — what actually lands in the bank"
-          />
-        </div>
-        <div className="mb-4 grid grid-cols-2 gap-4">
-          <NumberField
-            label="Monthly NPS (auto-deducted)"
-            value={state.monthlyNpsContribution}
-            onChange={(v) => setState((s) => ({ ...s, monthlyNpsContribution: v }))}
-            prefix="₹"
-            hint="Fixed, like EPF — doesn't reduce in-hand salary further"
+            hint="You + spouse, after EPF/NPS/tax are already deducted"
           />
           <NumberField
             label="Salary growth"
@@ -146,7 +137,7 @@ export function Inputs({
           />
         </div>
         <div className="border-t border-zinc-800 pt-4">
-          <p className="mb-2 text-xs font-semibold text-zinc-400">You — basic salary (EPF calc only)</p>
+          <p className="mb-2 text-xs font-semibold text-zinc-400">Automatic payroll deductions — before in-hand pay</p>
           <div className="grid grid-cols-2 gap-4">
             <NumberField
               label="Your basic salary"
@@ -155,11 +146,18 @@ export function Inputs({
               prefix="₹"
             />
             <NumberField
+              label="Monthly NPS"
+              value={state.monthlyNpsContribution}
+              onChange={(v) => setState((s) => ({ ...s, monthlyNpsContribution: v }))}
+              prefix="₹"
+              hint="Fixed — doesn't scale with salary"
+            />
+            <NumberField
               label="EPF + VPF (employee)"
               value={state.salary.yourEpfEmployeePct}
               onChange={(v) => patchSalary('yourEpfEmployeePct', v)}
               suffix="%"
-              hint="12% EPF + your VPF top-up"
+              hint="12% EPF + your VPF top-up, of basic"
             />
             <NumberField
               label="EPF (employer match)"
@@ -204,13 +202,6 @@ export function Inputs({
         <SectionTitle title="Current holdings" subtitle="Bank balance / emergency fund lives under Cash" />
         <div className="grid grid-cols-2 gap-4">
           <NumberField label="Cash / Emergency fund" value={state.holdings.cash} onChange={(v) => patchHoldings('cash', v)} prefix="₹" />
-          <NumberField
-            label="Debt fund"
-            value={state.holdings.debtFund}
-            onChange={(v) => patchHoldings('debtFund', v)}
-            prefix="₹"
-            hint="Debt mutual funds — DAAF's value is added to this in the net worth view"
-          />
           <NumberField label="FD / RD" value={state.holdings.debt} onChange={(v) => patchHoldings('debt', v)} prefix="₹" />
           <NumberField label="Equity - Indian MF" value={state.holdings.equityIndianMF} onChange={(v) => patchHoldings('equityIndianMF', v)} prefix="₹" />
           <NumberField label="Equity - Overseas" value={state.holdings.equityOverseas} onChange={(v) => patchHoldings('equityOverseas', v)} prefix="₹" />

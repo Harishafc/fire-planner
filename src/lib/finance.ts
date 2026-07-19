@@ -23,7 +23,7 @@ export function currentAllocation(state: PlannerState): AllocationTarget {
   const daafRisky = (state.daaf.balance * state.daaf.equityEquivalentPct) / 100;
   const daafSafe = state.daaf.balance - daafRisky;
   const risky = equityTotal(h) + daafRisky;
-  const safe = h.cash + h.debtFund + h.debt + h.gold + h.nps + h.epf + h.travelFund + daafSafe;
+  const safe = h.cash + h.debt + h.gold + h.nps + h.epf + h.travelFund + daafSafe;
   return { safePct: (safe / netWorth) * 100, riskyPct: (risky / netWorth) * 100 };
 }
 
@@ -43,6 +43,16 @@ export interface CashFlowCheck {
   npsInfo: number;
 }
 
+export function todaysEpfContribution(state: PlannerState): number {
+  const s = state.salary;
+  const currentYear = new Date().getFullYear();
+  const spouseActive = s.spouseBasicSalary > 0 && currentYear >= s.spouseIncomeStartYear;
+  return (
+    (s.yourBasicSalary * (s.yourEpfEmployeePct + s.yourEpfEmployerPct)) / 100 +
+    (spouseActive ? (s.spouseBasicSalary * (s.spouseEpfEmployeePct + s.spouseEpfEmployerPct)) / 100 : 0)
+  );
+}
+
 export function cashFlowCheck(state: PlannerState): CashFlowCheck {
   const inHandSalary = state.salary.combinedInHandSalary;
   const rdOutflow = state.monthlyRd;
@@ -51,16 +61,54 @@ export function cashFlowCheck(state: PlannerState): CashFlowCheck {
   const expenseOutflow = state.monthlyExpense;
 
   const surplus = inHandSalary - rdOutflow - sipOutflow - travelOutflow - expenseOutflow;
-
-  const s = state.salary;
-  const currentYear = new Date().getFullYear();
-  const spouseActive = s.spouseBasicSalary > 0 && currentYear >= s.spouseIncomeStartYear;
-  const epfInfo =
-    (s.yourBasicSalary * (s.yourEpfEmployeePct + s.yourEpfEmployerPct)) / 100 +
-    (spouseActive ? (s.spouseBasicSalary * (s.spouseEpfEmployeePct + s.spouseEpfEmployerPct)) / 100 : 0);
+  const epfInfo = todaysEpfContribution(state);
   const npsInfo = state.monthlyNpsContribution;
 
   return { inHandSalary, rdOutflow, sipOutflow, travelOutflow, expenseOutflow, surplus, epfInfo, npsInfo };
+}
+
+/**
+ * What actually happens to your money every month across every bucket — EPF, NPS, RD, and the
+ * DAAF (safe) / Equity (risky) split of your SIP — so you can see the real safe vs. risky mix
+ * of new money going in, not just your existing portfolio's composition.
+ */
+export interface MonthlyContributionBreakdown {
+  epf: number;
+  nps: number;
+  rd: number;
+  debtFundSip: number;
+  equityMf: number;
+  safeTotal: number;
+  riskyTotal: number;
+  total: number;
+  safePct: number;
+  riskyPct: number;
+}
+
+export function monthlyContributionBreakdown(state: PlannerState): MonthlyContributionBreakdown {
+  const epf = todaysEpfContribution(state);
+  const nps = state.monthlyNpsContribution;
+  const rd = state.monthlyRd;
+  const target = targetAllocationForAge(state.currentAge);
+  const debtFundSip = state.monthlySipTotal * (target.safePct / 100);
+  const equityMf = state.monthlySipTotal * (target.riskyPct / 100);
+
+  const safeTotal = epf + nps + rd + debtFundSip;
+  const riskyTotal = equityMf;
+  const total = safeTotal + riskyTotal;
+
+  return {
+    epf,
+    nps,
+    rd,
+    debtFundSip,
+    equityMf,
+    safeTotal,
+    riskyTotal,
+    total,
+    safePct: total > 0 ? (safeTotal / total) * 100 : 0,
+    riskyPct: total > 0 ? (riskyTotal / total) * 100 : 0,
+  };
 }
 
 export function calcEMI(principal: number, annualRatePct: number, years: number): number {
@@ -79,7 +127,7 @@ export function equityTotal(h: Holdings): number {
 export function currentNetWorth(state: PlannerState): number {
   const h = state.holdings;
   return (
-    h.cash + h.debtFund + h.debt + equityTotal(h) + h.gold + h.nps + h.epf + h.travelFund + state.daaf.balance
+    h.cash + h.debt + equityTotal(h) + h.gold + h.nps + h.epf + h.travelFund + state.daaf.balance
   );
 }
 
@@ -157,7 +205,6 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
   };
 
   let cash = state.holdings.cash;
-  let debtFund = state.holdings.debtFund;
   let debt = state.holdings.debt;
   let equity = equityTotal(state.holdings);
   let gold = state.holdings.gold;
@@ -193,7 +240,6 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
 
     // growth
     cash *= 1 + mRate.cash;
-    debtFund *= 1 + mRate.debt;
     debt *= 1 + mRate.debt;
     equity *= 1 + mRate.equity;
     gold *= 1 + mRate.gold;
@@ -262,12 +308,11 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
     debt += state.monthlyRd;
 
     if (month === 11) {
-      const liquidNetWorth = cash + debtFund + debt + equity + gold + nps + epf + travelFund + daaf;
+      const liquidNetWorth = cash + debt + equity + gold + nps + epf + travelFund + daaf;
       const monthlyExpenseThisYear = state.monthlyExpense * Math.pow(1 + state.inflationRate / 100, yearsElapsed);
       snapshots.push({
         year,
         cash,
-        debtFund,
         debt,
         equity,
         gold,

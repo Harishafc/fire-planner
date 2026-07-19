@@ -7,6 +7,7 @@ import {
   equityTotal,
   formatINRFull,
   formatINR,
+  monthlyContributionBreakdown,
   targetAllocationForAge,
 } from '../lib/finance';
 import { Card, Pill, SectionTitle, StatTile } from './ui';
@@ -20,10 +21,12 @@ export function Overview({ state }: { state: PlannerState }) {
   const actual = currentAllocation(state);
   const allocationGap = actual.riskyPct - target.riskyPct;
   const cashFlow = cashFlowCheck(state);
+  const contrib = monthlyContributionBreakdown(state);
+  const contribGap = contrib.riskyPct - target.riskyPct;
 
   const breakdown = [
     { key: 'cash', label: 'Cash / Emergency', value: h.cash, safe: true },
-    { key: 'debtFund', label: 'Debt fund', value: h.debtFund + state.daaf.balance, safe: true },
+    { key: 'debtFund', label: 'Debt fund (DAAF)', value: state.daaf.balance, safe: true },
     { key: 'debt', label: 'FD / RD', value: h.debt + h.travelFund, safe: true },
     { key: 'equityIndianMF', label: 'Equity - Indian MF', value: h.equityIndianMF, safe: false },
     { key: 'equityOverseas', label: 'Equity - Overseas', value: h.equityOverseas, safe: false },
@@ -40,7 +43,7 @@ export function Overview({ state }: { state: PlannerState }) {
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
       <Card className="lg:col-span-2">
-        <SectionTitle title="Net worth composition" subtitle={`${formatINRFull(netWorth)} · Debt fund includes your DAAF balance, FD/RD includes Travel fund`} />
+        <SectionTitle title="Net worth composition" subtitle={`${formatINRFull(netWorth)} · Debt fund is your DAAF balance, FD/RD includes Travel fund`} />
         <div className="mb-4 flex h-3 w-full overflow-hidden rounded-full border border-zinc-800">
           {breakdown.map((b) => (
             <div
@@ -117,6 +120,34 @@ export function Overview({ state }: { state: PlannerState }) {
             You're currently {Math.abs(allocationGap).toFixed(0)} points {allocationGap > 0 ? 'overweight equity' : 'overweight safe/debt'}{' '}
             vs. your age-based target. New SIP money is automatically split toward the target going forward, but your
             existing holdings aren't rebalanced automatically.
+          </p>
+        )}
+      </Card>
+
+      <Card className="lg:col-span-3">
+        <SectionTitle
+          title="Monthly contribution breakdown"
+          subtitle="Where every rupee you invest each month actually goes — safe (EPF, NPS, RD, DAAF) vs. risky (Equity MF)"
+        />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <StatTile label="EPF" value={formatINR(contrib.epf)} sub="Safe" />
+          <StatTile label="NPS" value={formatINR(contrib.nps)} sub="Safe" />
+          <StatTile label="RD" value={formatINR(contrib.rd)} sub="Safe" />
+          <StatTile label="Debt fund (DAAF)" value={formatINR(contrib.debtFundSip)} sub="Safe — SIP's safe share" />
+          <StatTile label="Equity MF" value={formatINR(contrib.equityMf)} sub="Risky — SIP's equity share" />
+        </div>
+        <div className="mt-4 flex h-3 w-full overflow-hidden rounded-full border border-zinc-800">
+          <div style={{ width: `${contrib.riskyPct}%`, backgroundColor: CATEGORICAL.aqua }} />
+          <div style={{ width: `${contrib.safePct}%`, backgroundColor: CATEGORICAL.blue }} />
+        </div>
+        <div className="mt-2 flex justify-between text-xs text-zinc-400">
+          <span>Risky: {contrib.riskyPct.toFixed(0)}% of {formatINR(contrib.total)}/mo</span>
+          <span>Safe: {contrib.safePct.toFixed(0)}%</span>
+        </div>
+        {Math.abs(contribGap) >= 3 && (
+          <p className="mt-3 text-xs text-amber-400">
+            This month's new money is {Math.abs(contribGap).toFixed(0)} points {contribGap > 0 ? 'more equity-heavy' : 'more safe-heavy'}{' '}
+            than your {target.riskyPct.toFixed(0)}/{target.safePct.toFixed(0)} age-based target.
           </p>
         )}
       </Card>
