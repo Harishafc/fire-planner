@@ -6,6 +6,7 @@ export interface Holdings {
   equityStocks: number;
   gold: number;
   nps: number;
+  epf: number;
 }
 
 export interface GrowthRates {
@@ -16,6 +17,18 @@ export interface GrowthRates {
   nps: number;
   daaf: number;
   land: number;
+  epf: number;
+}
+
+export interface SalaryInputs {
+  yourBasicSalary: number;
+  yourEpfEmployeePct: number;
+  yourEpfEmployerPct: number;
+  spouseBasicSalary: number;
+  spouseIncomeStartYear: number;
+  spouseEpfEmployeePct: number;
+  spouseEpfEmployerPct: number;
+  salaryGrowthPct: number;
 }
 
 export interface LumpSum {
@@ -60,11 +73,13 @@ export interface PlannerState {
   currentAge: number;
   monthlySipTotal: number;
   monthlyRd: number;
+  monthlyNpsContribution: number;
   holdings: Holdings;
   monthlyExpense: number;
   inflationRate: number;
   growthRates: GrowthRates;
   daaf: DaafFund;
+  salary: SalaryInputs;
   risk: RiskInputs;
   land: LandInputs;
   comparisonYears: number[];
@@ -80,6 +95,7 @@ export interface YearSnapshot {
   equity: number;
   gold: number;
   nps: number;
+  epf: number;
   daaf: number;
   land: number;
   loanOutstanding: number;
@@ -93,4 +109,5 @@ export interface YearSnapshot {
   safeSipPortion: number;
   targetRiskyPct: number;
   targetSafePct: number;
+  monthlyExpenseThisYear: number;
 }

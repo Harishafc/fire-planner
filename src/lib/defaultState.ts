@@ -6,6 +6,7 @@ export const defaultState: PlannerState = {
   currentAge: 30,
   monthlySipTotal: 55000,
   monthlyRd: 10000,
+  monthlyNpsContribution: 7000,
   holdings: {
     cash: 500000,
     debt: 800000,
@@ -14,6 +15,7 @@ export const defaultState: PlannerState = {
     equityStocks: 400000,
     gold: 250000,
     nps: 350000,
+    epf: 900000,
   },
   monthlyExpense: 60000,
   inflationRate: 6,
@@ -25,6 +27,7 @@ export const defaultState: PlannerState = {
     nps: 9,
     daaf: 10,
     land: 8,
+    epf: 8.25,
   },
   daaf: {
     balance: 600000,
@@ -32,6 +35,16 @@ export const defaultState: PlannerState = {
     lumpSums: [
       { id: 'ls-1', year: currentYear + 1, month: 3, amount: 200000, label: 'Annual bonus' },
     ],
+  },
+  salary: {
+    yourBasicSalary: 100000,
+    yourEpfEmployeePct: 17,
+    yourEpfEmployerPct: 12,
+    spouseBasicSalary: 0,
+    spouseIncomeStartYear: currentYear + 1,
+    spouseEpfEmployeePct: 12,
+    spouseEpfEmployerPct: 12,
+    salaryGrowthPct: 2.5,
   },
   risk: {
     horizonYears: 10,

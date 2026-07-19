@@ -15,7 +15,7 @@ export function targetAllocationForAge(age: number): AllocationTarget {
   return { safePct, riskyPct: 100 - safePct };
 }
 
-/** Actual current portfolio split: NPS counts as safe, DAAF splits by its equity-equivalent %. */
+/** Actual current portfolio split: NPS + EPF count as safe, DAAF splits by its equity-equivalent %. */
 export function currentAllocation(state: PlannerState): AllocationTarget {
   const h = state.holdings;
   const netWorth = currentNetWorth(state);
@@ -23,8 +23,39 @@ export function currentAllocation(state: PlannerState): AllocationTarget {
   const daafRisky = (state.daaf.balance * state.daaf.equityEquivalentPct) / 100;
   const daafSafe = state.daaf.balance - daafRisky;
   const risky = equityTotal(h) + daafRisky;
-  const safe = h.cash + h.debt + h.gold + h.nps + daafSafe;
+  const safe = h.cash + h.debt + h.gold + h.nps + h.epf + daafSafe;
   return { safePct: (safe / netWorth) * 100, riskyPct: (risky / netWorth) * 100 };
+}
+
+/** Today's monthly household cash-flow check: salary minus every committed outflow. */
+export interface CashFlowCheck {
+  salaryTotal: number;
+  employeeEpfOutflow: number;
+  npsOutflow: number;
+  rdOutflow: number;
+  sipOutflow: number;
+  expenseOutflow: number;
+  surplus: number;
+}
+
+export function cashFlowCheck(state: PlannerState): CashFlowCheck {
+  const s = state.salary;
+  const currentYear = new Date().getFullYear();
+  const spouseActive = s.spouseBasicSalary > 0 && currentYear >= s.spouseIncomeStartYear;
+
+  const salaryTotal = s.yourBasicSalary + (spouseActive ? s.spouseBasicSalary : 0);
+  const employeeEpfOutflow =
+    (s.yourBasicSalary * s.yourEpfEmployeePct) / 100 +
+    (spouseActive ? (s.spouseBasicSalary * s.spouseEpfEmployeePct) / 100 : 0);
+
+  const npsOutflow = state.monthlyNpsContribution;
+  const rdOutflow = state.monthlyRd;
+  const sipOutflow = state.monthlySipTotal;
+  const expenseOutflow = state.monthlyExpense;
+
+  const surplus = salaryTotal - employeeEpfOutflow - npsOutflow - rdOutflow - sipOutflow - expenseOutflow;
+
+  return { salaryTotal, employeeEpfOutflow, npsOutflow, rdOutflow, sipOutflow, expenseOutflow, surplus };
 }
 
 export function calcEMI(principal: number, annualRatePct: number, years: number): number {
@@ -43,7 +74,7 @@ export function equityTotal(h: Holdings): number {
 export function currentNetWorth(state: PlannerState): number {
   const h = state.holdings;
   return (
-    h.cash + h.debt + equityTotal(h) + h.gold + h.nps + state.daaf.balance
+    h.cash + h.debt + equityTotal(h) + h.gold + h.nps + h.epf + state.daaf.balance
   );
 }
 
@@ -92,6 +123,7 @@ function applyDelta(rates: GrowthRates, deltaPct: number): GrowthRates {
     nps: rates.nps + deltaPct,
     daaf: rates.daaf + deltaPct,
     land: rates.land,
+    epf: rates.epf,
   };
 }
 
@@ -114,6 +146,7 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
     nps: monthlyRate(rates.nps),
     daaf: monthlyRate(rates.daaf),
     land: monthlyRate(rates.land),
+    epf: monthlyRate(rates.epf),
   };
 
   let cash = state.holdings.cash;
@@ -121,6 +154,7 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
   let equity = equityTotal(state.holdings);
   let gold = state.holdings.gold;
   let nps = state.holdings.nps;
+  let epf = state.holdings.epf;
   let daaf = state.daaf.balance;
   let land = 0;
 
@@ -130,7 +164,7 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
   let cumulativeInterest = 0;
   let purchased = false;
 
-  const totalSip = state.monthlySipTotal;
+  const salaryGrowth = state.salary.salaryGrowthPct / 100;
 
   const daafLumpSumsByMonth = new Map<string, number>();
   for (const ls of state.daaf.lumpSums) {
@@ -154,6 +188,7 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
     equity *= 1 + mRate.equity;
     gold *= 1 + mRate.gold;
     nps *= 1 + mRate.nps;
+    epf *= 1 + mRate.epf;
     daaf *= 1 + mRate.daaf;
     if (land > 0) land *= 1 + mRate.land;
 
@@ -182,10 +217,30 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
       sipReduction = emi;
     }
 
-    // contributions — age-based target allocation splits the investable SIP into equity (risky) and DAAF (safe)
-    const age = state.currentAge + (year - startYear);
+    // salary-linked contributions — SIP, EPF, and expenses all step up yearly with salary growth / inflation
+    const yearsElapsed = year - startYear;
+    const stepUp = Math.pow(1 + salaryGrowth, yearsElapsed);
+    const steppedSip = state.monthlySipTotal * stepUp;
+
+    const yourBasicThisYear = state.salary.yourBasicSalary * stepUp;
+    const yourEpfMonthly = (yourBasicThisYear * (state.salary.yourEpfEmployeePct + state.salary.yourEpfEmployerPct)) / 100;
+
+    const spouseActive = state.salary.spouseBasicSalary > 0 && year >= state.salary.spouseIncomeStartYear;
+    const spouseYearsElapsed = year - state.salary.spouseIncomeStartYear;
+    const spouseBasicThisYear = spouseActive
+      ? state.salary.spouseBasicSalary * Math.pow(1 + salaryGrowth, spouseYearsElapsed)
+      : 0;
+    const spouseEpfMonthly = spouseActive
+      ? (spouseBasicThisYear * (state.salary.spouseEpfEmployeePct + state.salary.spouseEpfEmployerPct)) / 100
+      : 0;
+
+    epf += yourEpfMonthly + spouseEpfMonthly;
+    nps += state.monthlyNpsContribution;
+
+    // age-based target allocation splits the investable SIP into equity (risky) and DAAF (safe)
+    const age = state.currentAge + yearsElapsed;
     const target = targetAllocationForAge(age);
-    const effectiveSip = Math.max(0, totalSip - sipReduction);
+    const effectiveSip = Math.max(0, steppedSip - sipReduction);
     const equityPortion = effectiveSip * (target.riskyPct / 100);
     const safePortion = effectiveSip * (target.safePct / 100);
 
@@ -195,7 +250,8 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
     debt += state.monthlyRd;
 
     if (month === 11) {
-      const liquidNetWorth = cash + debt + equity + gold + nps + daaf;
+      const liquidNetWorth = cash + debt + equity + gold + nps + epf + daaf;
+      const monthlyExpenseThisYear = state.monthlyExpense * Math.pow(1 + state.inflationRate / 100, yearsElapsed);
       snapshots.push({
         year,
         cash,
@@ -203,6 +259,7 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
         equity,
         gold,
         nps,
+        epf,
         daaf,
         land,
         loanOutstanding: loanPrincipal,
@@ -211,11 +268,12 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
         netWorthWithoutLand: liquidNetWorth,
         emi,
         monthlySipInvested: effectiveSip,
-        monthlySipOriginal: totalSip,
+        monthlySipOriginal: steppedSip,
         equitySipPortion: equityPortion,
         safeSipPortion: safePortion,
         targetRiskyPct: target.riskyPct,
         targetSafePct: target.safePct,
+        monthlyExpenseThisYear,
       });
     }
   }

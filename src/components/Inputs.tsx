@@ -25,6 +25,9 @@ export function Inputs({
   const patchRisk = (key: keyof PlannerState['risk'], v: number) =>
     setState((s) => ({ ...s, risk: { ...s.risk, [key]: v } }));
 
+  const patchSalary = (key: keyof PlannerState['salary'], v: number) =>
+    setState((s) => ({ ...s, salary: { ...s.salary, [key]: v } }));
+
   const addLumpSum = () =>
     setState((s) => ({
       ...s,
@@ -71,11 +74,18 @@ export function Inputs({
             prefix="₹"
           />
           <NumberField
+            label="Monthly NPS contribution"
+            value={state.monthlyNpsContribution}
+            onChange={(v) => setState((s) => ({ ...s, monthlyNpsContribution: v }))}
+            prefix="₹"
+            hint="Fixed — doesn't scale with salary, so you can target a tax-saving cap"
+          />
+          <NumberField
             label="Monthly expense"
             value={state.monthlyExpense}
             onChange={(v) => setState((s) => ({ ...s, monthlyExpense: v }))}
             prefix="₹"
-            hint="Manual entry, not linked to a tracker"
+            hint="Grows with inflation in projections"
           />
         </div>
       </Card>
@@ -106,6 +116,73 @@ export function Inputs({
       </Card>
 
       <Card>
+        <SectionTitle
+          title="Household income"
+          subtitle="Drives EPF/VPF contributions and the yearly SIP step-up — uses basic salary as a take-home proxy"
+        />
+        <div className="mb-4">
+          <p className="mb-2 text-xs font-semibold text-zinc-400">You</p>
+          <div className="grid grid-cols-2 gap-4">
+            <NumberField
+              label="Your basic salary"
+              value={state.salary.yourBasicSalary}
+              onChange={(v) => patchSalary('yourBasicSalary', v)}
+              prefix="₹"
+            />
+            <NumberField
+              label="Salary growth"
+              value={state.salary.salaryGrowthPct}
+              onChange={(v) => patchSalary('salaryGrowthPct', v)}
+              suffix="%/yr"
+              hint="Also steps up your SIP each year"
+            />
+            <NumberField
+              label="EPF + VPF (employee)"
+              value={state.salary.yourEpfEmployeePct}
+              onChange={(v) => patchSalary('yourEpfEmployeePct', v)}
+              suffix="%"
+              hint="12% EPF + your VPF top-up"
+            />
+            <NumberField
+              label="EPF (employer match)"
+              value={state.salary.yourEpfEmployerPct}
+              onChange={(v) => patchSalary('yourEpfEmployerPct', v)}
+              suffix="%"
+            />
+          </div>
+        </div>
+        <div className="border-t border-zinc-800 pt-4">
+          <p className="mb-2 text-xs font-semibold text-zinc-400">Spouse</p>
+          <div className="grid grid-cols-2 gap-4">
+            <NumberField
+              label="Spouse basic salary"
+              value={state.salary.spouseBasicSalary}
+              onChange={(v) => patchSalary('spouseBasicSalary', v)}
+              prefix="₹"
+              hint="0 until she starts working"
+            />
+            <NumberField
+              label="Starts in year"
+              value={state.salary.spouseIncomeStartYear}
+              onChange={(v) => patchSalary('spouseIncomeStartYear', v)}
+            />
+            <NumberField
+              label="EPF (employee)"
+              value={state.salary.spouseEpfEmployeePct}
+              onChange={(v) => patchSalary('spouseEpfEmployeePct', v)}
+              suffix="%"
+            />
+            <NumberField
+              label="EPF (employer match)"
+              value={state.salary.spouseEpfEmployerPct}
+              onChange={(v) => patchSalary('spouseEpfEmployerPct', v)}
+              suffix="%"
+            />
+          </div>
+        </div>
+      </Card>
+
+      <Card>
         <SectionTitle title="Current holdings" subtitle="Bank balance / emergency fund lives under Cash" />
         <div className="grid grid-cols-2 gap-4">
           <NumberField label="Cash / Emergency fund" value={state.holdings.cash} onChange={(v) => patchHoldings('cash', v)} prefix="₹" />
@@ -115,6 +192,7 @@ export function Inputs({
           <NumberField label="Equity - Stocks" value={state.holdings.equityStocks} onChange={(v) => patchHoldings('equityStocks', v)} prefix="₹" />
           <NumberField label="Gold" value={state.holdings.gold} onChange={(v) => patchHoldings('gold', v)} prefix="₹" />
           <NumberField label="NPS" value={state.holdings.nps} onChange={(v) => patchHoldings('nps', v)} prefix="₹" />
+          <NumberField label="EPF (incl. VPF)" value={state.holdings.epf} onChange={(v) => patchHoldings('epf', v)} prefix="₹" />
         </div>
       </Card>
 
@@ -209,6 +287,7 @@ export function Inputs({
           <NumberField label="Debt" value={state.growthRates.debt} onChange={(v) => patchGrowth('debt', v)} suffix="%/yr" />
           <NumberField label="Gold" value={state.growthRates.gold} onChange={(v) => patchGrowth('gold', v)} suffix="%/yr" />
           <NumberField label="NPS" value={state.growthRates.nps} onChange={(v) => patchGrowth('nps', v)} suffix="%/yr" />
+          <NumberField label="EPF" value={state.growthRates.epf} onChange={(v) => patchGrowth('epf', v)} suffix="%/yr" hint="Govt-notified rate, ~8.25%" />
           <NumberField label="Land appreciation" value={state.growthRates.land} onChange={(v) => patchGrowth('land', v)} suffix="%/yr" />
           <NumberField
             label="Projection end year"

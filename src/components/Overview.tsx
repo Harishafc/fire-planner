@@ -1,5 +1,6 @@
 import type { PlannerState } from '../lib/types';
 import {
+  cashFlowCheck,
   classifyRisk,
   currentAllocation,
   currentNetWorth,
@@ -18,6 +19,7 @@ export function Overview({ state }: { state: PlannerState }) {
   const target = targetAllocationForAge(state.currentAge);
   const actual = currentAllocation(state);
   const allocationGap = actual.riskyPct - target.riskyPct;
+  const cashFlow = cashFlowCheck(state);
 
   const breakdown = [
     { key: 'cash', label: 'Cash / Emergency', value: h.cash },
@@ -27,6 +29,7 @@ export function Overview({ state }: { state: PlannerState }) {
     { key: 'equityStocks', label: 'Equity - Stocks', value: h.equityStocks },
     { key: 'gold', label: 'Gold', value: h.gold },
     { key: 'nps', label: 'NPS', value: h.nps },
+    { key: 'epf', label: 'EPF (incl. VPF)', value: h.epf },
     { key: 'daaf', label: 'Parag Parikh DAAF', value: state.daaf.balance },
   ].filter((b) => b.value > 0);
 
@@ -90,7 +93,7 @@ export function Overview({ state }: { state: PlannerState }) {
             </div>
             <div className="flex justify-between text-xs text-zinc-400">
               <span>Risky (equity): {target.riskyPct.toFixed(0)}%</span>
-              <span>Safe (debt/cash/gold/NPS): {target.safePct.toFixed(0)}%</span>
+              <span>Safe (debt/cash/gold/NPS/EPF): {target.safePct.toFixed(0)}%</span>
             </div>
           </div>
           <div>
@@ -110,6 +113,27 @@ export function Overview({ state }: { state: PlannerState }) {
             You're currently {Math.abs(allocationGap).toFixed(0)} points {allocationGap > 0 ? 'overweight equity' : 'overweight safe/debt'}{' '}
             vs. your age-based target. New SIP money is automatically split toward the target going forward, but your
             existing holdings aren't rebalanced automatically.
+          </p>
+        )}
+      </Card>
+
+      <Card className="lg:col-span-3">
+        <SectionTitle
+          title="Monthly cash-flow check"
+          subtitle="Salary minus every committed outflow — uses basic salary as a take-home proxy, so treat this as a floor, not exact"
+        />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <StatTile label="Salary" value={formatINR(cashFlow.salaryTotal)} sub="You + spouse (if active)" />
+          <StatTile label="EPF (your share)" value={`− ${formatINR(cashFlow.employeeEpfOutflow)}`} sub="Employer match excluded" />
+          <StatTile label="NPS" value={`− ${formatINR(cashFlow.npsOutflow)}`} />
+          <StatTile label="RD + SIP" value={`− ${formatINR(cashFlow.rdOutflow + cashFlow.sipOutflow)}`} />
+          <StatTile label="Expenses" value={`− ${formatINR(cashFlow.expenseOutflow)}`} />
+          <StatTile label={cashFlow.surplus >= 0 ? 'Surplus' : 'Deficit'} value={formatINR(cashFlow.surplus)} />
+        </div>
+        {cashFlow.surplus < 0 && (
+          <p className="mt-4 text-xs text-rose-400">
+            You're committing {formatINR(Math.abs(cashFlow.surplus))} more per month than your salary covers. Consider
+            trimming SIP, RD, or expenses — or double check your salary figure.
           </p>
         )}
       </Card>

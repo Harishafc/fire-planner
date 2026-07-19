@@ -27,6 +27,7 @@ export const HOLDINGS_COLORS: Record<string, string> = {
   equityStocks: CATEGORICAL.aqua,
   gold: CATEGORICAL.orange,
   nps: CATEGORICAL.violet,
+  epf: '#0ea5e9',
   daaf: CATEGORICAL.red,
 };
 
