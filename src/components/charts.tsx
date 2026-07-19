@@ -106,13 +106,15 @@ export function TimeSeriesChart({
 export function SipVsEmiChart({
   data,
   purchaseYear,
-  sipColor,
+  equityColor,
+  safeColor,
   emiColor,
-  height = 260,
+  height = 280,
 }: {
   data: readonly Record<string, unknown>[];
   purchaseYear: number;
-  sipColor: string;
+  equityColor: string;
+  safeColor: string;
   emiColor: string;
   height?: number;
 }) {
@@ -143,7 +145,8 @@ export function SipVsEmiChart({
           strokeDasharray="4 4"
           label={{ value: `Purchase (${purchaseYear})`, position: 'top', fill: CHART.secondaryInk, fontSize: 11 }}
         />
-        <Bar dataKey="monthlySipInvested" name="Monthly SIP invested" fill={sipColor} radius={[3, 3, 0, 0]} />
+        <Bar dataKey="equitySipPortion" name="SIP → Equity" stackId="sip" fill={equityColor} radius={[0, 0, 0, 0]} />
+        <Bar dataKey="safeSipPortion" name="SIP → DAAF (safe)" stackId="sip" fill={safeColor} radius={[3, 3, 0, 0]} />
         <Bar dataKey="emi" name="Monthly EMI" fill={emiColor} radius={[3, 3, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>

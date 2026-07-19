@@ -1,4 +1,5 @@
 import type { PlannerState, LumpSum } from '../lib/types';
+import { targetAllocationForAge } from '../lib/finance';
 import { Card, NumberField, SectionTitle } from './ui';
 
 function uid() {
@@ -51,19 +52,17 @@ export function Inputs({
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
       <Card>
-        <SectionTitle title="Monthly contributions" subtitle="Split your recurring investments" />
+        <SectionTitle
+          title="Monthly contributions"
+          subtitle="Your total investable SIP is auto-split into equity vs. DAAF (safe) by your target allocation below"
+        />
         <div className="grid grid-cols-2 gap-4">
           <NumberField
-            label="SIP - Equity"
-            value={state.monthlySipEquity}
-            onChange={(v) => setState((s) => ({ ...s, monthlySipEquity: v }))}
+            label="Monthly SIP (total)"
+            value={state.monthlySipTotal}
+            onChange={(v) => setState((s) => ({ ...s, monthlySipTotal: v }))}
             prefix="₹"
-          />
-          <NumberField
-            label="SIP - Debt"
-            value={state.monthlySipDebt}
-            onChange={(v) => setState((s) => ({ ...s, monthlySipDebt: v }))}
-            prefix="₹"
+            hint="Split automatically between equity and DAAF"
           />
           <NumberField
             label="Monthly RD"
@@ -82,6 +81,31 @@ export function Inputs({
       </Card>
 
       <Card>
+        <SectionTitle
+          title="Asset allocation"
+          subtitle="Age-based rule: Safe/Debt % = your age (capped at 50), Risky/Equity % = the rest"
+        />
+        <div className="grid grid-cols-2 gap-4">
+          <NumberField
+            label="Current age"
+            value={state.currentAge}
+            onChange={(v) => setState((s) => ({ ...s, currentAge: v }))}
+            suffix="yrs"
+          />
+        </div>
+        {(() => {
+          const t = targetAllocationForAge(state.currentAge);
+          return (
+            <p className="mt-3 text-xs text-zinc-500">
+              Today's target: <span className="text-zinc-300">{t.riskyPct.toFixed(0)}% equity</span> /{' '}
+              <span className="text-zinc-300">{t.safePct.toFixed(0)}% safe (DAAF)</span>. This shifts by 1 point a year
+              until you turn 50, then holds steady.
+            </p>
+          );
+        })()}
+      </Card>
+
+      <Card>
         <SectionTitle title="Current holdings" subtitle="Bank balance / emergency fund lives under Cash" />
         <div className="grid grid-cols-2 gap-4">
           <NumberField label="Cash / Emergency fund" value={state.holdings.cash} onChange={(v) => patchHoldings('cash', v)} prefix="₹" />
@@ -95,10 +119,9 @@ export function Inputs({
       </Card>
 
       <Card>
-        <SectionTitle title="Parag Parikh DAAF" subtitle="Tracked separately — funds the land down payment" />
+        <SectionTitle title="Parag Parikh DAAF" subtitle="Funds the land down payment — receives the 'safe' share of your monthly SIP automatically" />
         <div className="grid grid-cols-2 gap-4">
           <NumberField label="Current balance" value={state.daaf.balance} onChange={(v) => patchDaaf('balance', v)} prefix="₹" />
-          <NumberField label="Monthly SIP" value={state.daaf.monthlySip} onChange={(v) => patchDaaf('monthlySip', v)} prefix="₹" />
           <NumberField
             label="Equity-equivalent %"
             value={state.daaf.equityEquivalentPct}
@@ -108,6 +131,16 @@ export function Inputs({
           />
           <NumberField label="Growth rate" value={state.growthRates.daaf} onChange={(v) => patchGrowth('daaf', v)} suffix="%/yr" />
         </div>
+        {(() => {
+          const t = targetAllocationForAge(state.currentAge);
+          const monthlyDaafSip = state.monthlySipTotal * (t.safePct / 100);
+          return (
+            <p className="mt-3 text-xs text-zinc-500">
+              Current monthly DAAF contribution: <span className="text-zinc-300">₹{Math.round(monthlyDaafSip).toLocaleString('en-IN')}</span> (
+              {t.safePct.toFixed(0)}% of your total SIP, per the asset allocation target)
+            </p>
+          );
+        })()}
 
         <div className="mt-4">
           <div className="mb-2 flex items-center justify-between">

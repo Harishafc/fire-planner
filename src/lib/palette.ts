@@ -43,6 +43,7 @@ export const CURVE_COLORS = {
 };
 
 export const CASHFLOW_COLORS = {
-  sip: CATEGORICAL.aqua,
+  equity: CATEGORICAL.aqua,
+  safe: CATEGORICAL.blue,
   emi: CATEGORICAL.red,
 };

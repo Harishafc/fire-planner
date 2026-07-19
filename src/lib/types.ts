@@ -28,7 +28,6 @@ export interface LumpSum {
 
 export interface DaafFund {
   balance: number;
-  monthlySip: number;
   equityEquivalentPct: number;
   lumpSums: LumpSum[];
 }
@@ -36,6 +35,11 @@ export interface DaafFund {
 export interface RiskInputs {
   horizonYears: number;
   liquidBufferMonths: number;
+}
+
+export interface AllocationTarget {
+  safePct: number;
+  riskyPct: number;
 }
 
 export interface LandInputs {
@@ -53,8 +57,8 @@ export interface ScenarioDelta {
 }
 
 export interface PlannerState {
-  monthlySipEquity: number;
-  monthlySipDebt: number;
+  currentAge: number;
+  monthlySipTotal: number;
   monthlyRd: number;
   holdings: Holdings;
   monthlyExpense: number;
@@ -85,4 +89,8 @@ export interface YearSnapshot {
   emi: number;
   monthlySipInvested: number;
   monthlySipOriginal: number;
+  equitySipPortion: number;
+  safeSipPortion: number;
+  targetRiskyPct: number;
+  targetSafePct: number;
 }

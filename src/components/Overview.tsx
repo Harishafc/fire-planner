@@ -1,12 +1,23 @@
 import type { PlannerState } from '../lib/types';
-import { classifyRisk, currentNetWorth, equityTotal, formatINRFull, formatINR } from '../lib/finance';
+import {
+  classifyRisk,
+  currentAllocation,
+  currentNetWorth,
+  equityTotal,
+  formatINRFull,
+  formatINR,
+  targetAllocationForAge,
+} from '../lib/finance';
 import { Card, Pill, SectionTitle, StatTile } from './ui';
-import { HOLDINGS_COLORS } from '../lib/palette';
+import { CATEGORICAL, HOLDINGS_COLORS } from '../lib/palette';
 
 export function Overview({ state }: { state: PlannerState }) {
   const netWorth = currentNetWorth(state);
   const risk = classifyRisk(state);
   const h = state.holdings;
+  const target = targetAllocationForAge(state.currentAge);
+  const actual = currentAllocation(state);
+  const allocationGap = actual.riskyPct - target.riskyPct;
 
   const breakdown = [
     { key: 'cash', label: 'Cash / Emergency', value: h.cash },
@@ -66,11 +77,53 @@ export function Overview({ state }: { state: PlannerState }) {
       </Card>
 
       <Card className="lg:col-span-3">
+        <SectionTitle
+          title="Asset allocation — target vs. actual"
+          subtitle={`Age-based rule: Safe/Debt % = your age (capped at 50), Risky/Equity % = the rest. You're ${state.currentAge} today.`}
+        />
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div>
+            <p className="mb-2 text-xs font-medium text-zinc-500">Target (age-based)</p>
+            <div className="mb-2 flex h-3 w-full overflow-hidden rounded-full border border-zinc-800">
+              <div style={{ width: `${target.riskyPct}%`, backgroundColor: CATEGORICAL.aqua }} />
+              <div style={{ width: `${target.safePct}%`, backgroundColor: CATEGORICAL.blue }} />
+            </div>
+            <div className="flex justify-between text-xs text-zinc-400">
+              <span>Risky (equity): {target.riskyPct.toFixed(0)}%</span>
+              <span>Safe (debt/cash/gold/NPS): {target.safePct.toFixed(0)}%</span>
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-medium text-zinc-500">Actual (your current portfolio)</p>
+            <div className="mb-2 flex h-3 w-full overflow-hidden rounded-full border border-zinc-800">
+              <div style={{ width: `${actual.riskyPct}%`, backgroundColor: CATEGORICAL.aqua }} />
+              <div style={{ width: `${actual.safePct}%`, backgroundColor: CATEGORICAL.blue }} />
+            </div>
+            <div className="flex justify-between text-xs text-zinc-400">
+              <span>Risky (equity): {actual.riskyPct.toFixed(0)}%</span>
+              <span>Safe: {actual.safePct.toFixed(0)}%</span>
+            </div>
+          </div>
+        </div>
+        {Math.abs(allocationGap) >= 3 && (
+          <p className="mt-4 text-xs text-amber-400">
+            You're currently {Math.abs(allocationGap).toFixed(0)} points {allocationGap > 0 ? 'overweight equity' : 'overweight safe/debt'}{' '}
+            vs. your age-based target. New SIP money is automatically split toward the target going forward, but your
+            existing holdings aren't rebalanced automatically.
+          </p>
+        )}
+      </Card>
+
+      <Card className="lg:col-span-3">
         <SectionTitle title="Quick stats" />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatTile label="Total net worth" value={formatINR(netWorth)} />
-          <StatTile label="Monthly SIP (total)" value={formatINR(state.monthlySipEquity + state.monthlySipDebt)} />
-          <StatTile label="Monthly savings rate" value={`${(((state.monthlySipEquity + state.monthlySipDebt + state.monthlyRd + state.daaf.monthlySip) / (state.monthlySipEquity + state.monthlySipDebt + state.monthlyRd + state.daaf.monthlySip + state.monthlyExpense)) * 100).toFixed(0)}%`} sub="of gross monthly cash flow" />
+          <StatTile label="Monthly SIP (total)" value={formatINR(state.monthlySipTotal)} sub="Auto-split by target allocation" />
+          <StatTile
+            label="Monthly savings rate"
+            value={`${(((state.monthlySipTotal + state.monthlyRd) / (state.monthlySipTotal + state.monthlyRd + state.monthlyExpense)) * 100).toFixed(0)}%`}
+            sub="of gross monthly cash flow"
+          />
           <StatTile label="Emergency runway" value={`${(h.cash / state.monthlyExpense).toFixed(1)} mo`} />
         </div>
       </Card>

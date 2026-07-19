@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { PlannerState } from '../lib/types';
-import { calcEMI, daafBalanceAtYear, formatINR, formatINRFull, runProjection } from '../lib/finance';
+import { calcEMI, daafBalanceAtYear, formatINR, formatINRFull, runProjection, targetAllocationForAge } from '../lib/finance';
 import { Card, NumberField, Pill, SectionTitle, StatTile } from './ui';
 import { SipVsEmiChart, TimeSeriesChart } from './charts';
 import { CASHFLOW_COLORS, CURVE_COLORS, SCENARIO_COLORS } from '../lib/palette';
@@ -31,10 +31,19 @@ export function LandScenario({
     [state]
   );
 
-  const totalSip = state.monthlySipEquity + state.monthlySipDebt;
+  const totalSip = state.monthlySipTotal;
   const sipAfterEmi = Math.max(0, totalSip - emi);
   const sipShortfall = emi - totalSip;
   const cashFlowData = scenarios[0]?.data ?? [];
+
+  const currentYear = new Date().getFullYear();
+  const ageAtPurchase = state.currentAge + (state.land.purchaseYear - currentYear);
+  const targetAtPurchase = targetAllocationForAge(ageAtPurchase);
+  const equityAfterEmi = sipAfterEmi * (targetAtPurchase.riskyPct / 100);
+  const safeAfterEmi = sipAfterEmi * (targetAtPurchase.safePct / 100);
+  const targetNow = targetAllocationForAge(state.currentAge);
+  const equityNow = totalSip * (targetNow.riskyPct / 100);
+  const safeNow = totalSip * (targetNow.safePct / 100);
 
   return (
     <div className="space-y-5">
@@ -61,28 +70,38 @@ export function LandScenario({
           subtitle={`What happens to your equity + debt SIP once the EMI kicks in, starting ${state.land.purchaseYear}`}
         />
         <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <StatTile label="SIP before purchase" value={formatINRFull(totalSip)} sub="Equity + Debt SIP today" />
+          <StatTile
+            label="SIP before purchase"
+            value={formatINRFull(totalSip)}
+            sub={`≈ ${formatINR(equityNow)} equity + ${formatINR(safeNow)} DAAF (${targetNow.riskyPct.toFixed(0)}/${targetNow.safePct.toFixed(0)} split at age ${state.currentAge})`}
+          />
           <StatTile
             label={`SIP from ${state.land.purchaseYear} onward`}
             value={formatINRFull(sipAfterEmi)}
-            sub={sipAfterEmi === 0 ? 'Fully absorbed by EMI' : 'After EMI is deducted'}
+            sub={
+              sipAfterEmi === 0
+                ? 'Fully absorbed by EMI'
+                : `≈ ${formatINR(equityAfterEmi)} equity + ${formatINR(safeAfterEmi)} DAAF (age ${ageAtPurchase})`
+            }
           />
           <StatTile label="Monthly EMI" value={formatINRFull(emi)} sub={`${state.land.loanTenureYears}yr loan @ ${state.land.loanInterestRate}%`} />
         </div>
         {sipShortfall > 0 && loanAmount > 0 && (
           <div className="mb-4">
             <Pill tone="rose">
-              EMI is {formatINR(sipShortfall)} more than your SIP — equity/debt investing pauses entirely from {state.land.purchaseYear} until the loan is paid off or SIP grows.
+              EMI is {formatINR(sipShortfall)} more than your SIP — equity/DAAF investing pauses entirely from {state.land.purchaseYear} until the loan is paid off or SIP grows.
             </Pill>
           </div>
         )}
         <p className="mb-2 text-xs font-medium text-zinc-500">
-          Bars show your actual monthly SIP investment (teal) next to the EMI you owe (red), year by year — the dashed line marks the purchase year.
+          Bars show your monthly SIP split by target allocation — teal for equity, blue for DAAF (safe) — stacked next to the
+          EMI you owe (red), year by year. The dashed line marks the purchase year.
         </p>
         <SipVsEmiChart
           data={cashFlowData}
           purchaseYear={state.land.purchaseYear}
-          sipColor={CASHFLOW_COLORS.sip}
+          equityColor={CASHFLOW_COLORS.equity}
+          safeColor={CASHFLOW_COLORS.safe}
           emiColor={CASHFLOW_COLORS.emi}
         />
       </Card>

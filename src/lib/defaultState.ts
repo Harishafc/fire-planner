@@ -3,8 +3,8 @@ import type { PlannerState } from './types';
 const currentYear = new Date().getFullYear();
 
 export const defaultState: PlannerState = {
-  monthlySipEquity: 40000,
-  monthlySipDebt: 15000,
+  currentAge: 30,
+  monthlySipTotal: 55000,
   monthlyRd: 10000,
   holdings: {
     cash: 500000,
@@ -28,7 +28,6 @@ export const defaultState: PlannerState = {
   },
   daaf: {
     balance: 600000,
-    monthlySip: 20000,
     equityEquivalentPct: 65,
     lumpSums: [
       { id: 'ls-1', year: currentYear + 1, month: 3, amount: 200000, label: 'Annual bonus' },

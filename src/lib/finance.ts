@@ -1,10 +1,31 @@
 import type {
+  AllocationTarget,
   GrowthRates,
   Holdings,
   LandInputs,
   PlannerState,
   YearSnapshot,
 } from './types';
+
+const AGE_ALLOCATION_CAP = 50;
+
+/** Age-based glide path: safe/debt % rises with age until it caps at 50 (then holds steady). */
+export function targetAllocationForAge(age: number): AllocationTarget {
+  const safePct = Math.min(Math.max(age, 0), AGE_ALLOCATION_CAP);
+  return { safePct, riskyPct: 100 - safePct };
+}
+
+/** Actual current portfolio split: NPS counts as safe, DAAF splits by its equity-equivalent %. */
+export function currentAllocation(state: PlannerState): AllocationTarget {
+  const h = state.holdings;
+  const netWorth = currentNetWorth(state);
+  if (netWorth <= 0) return { safePct: 0, riskyPct: 0 };
+  const daafRisky = (state.daaf.balance * state.daaf.equityEquivalentPct) / 100;
+  const daafSafe = state.daaf.balance - daafRisky;
+  const risky = equityTotal(h) + daafRisky;
+  const safe = h.cash + h.debt + h.gold + h.nps + daafSafe;
+  return { safePct: (safe / netWorth) * 100, riskyPct: (risky / netWorth) * 100 };
+}
 
 export function calcEMI(principal: number, annualRatePct: number, years: number): number {
   if (principal <= 0) return 0;
@@ -109,8 +130,7 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
   let cumulativeInterest = 0;
   let purchased = false;
 
-  const totalSip = state.monthlySipEquity + state.monthlySipDebt;
-  const equitySipRatio = totalSip > 0 ? state.monthlySipEquity / totalSip : 0;
+  const totalSip = state.monthlySipTotal;
 
   const daafLumpSumsByMonth = new Map<string, number>();
   for (const ls of state.daaf.lumpSums) {
@@ -162,13 +182,17 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
       sipReduction = emi;
     }
 
-    // contributions
-    const lumpSum = daafLumpSumsByMonth.get(`${year}-${month}`) ?? 0;
-    daaf += state.daaf.monthlySip + lumpSum;
-
+    // contributions — age-based target allocation splits the investable SIP into equity (risky) and DAAF (safe)
+    const age = state.currentAge + (year - startYear);
+    const target = targetAllocationForAge(age);
     const effectiveSip = Math.max(0, totalSip - sipReduction);
-    equity += effectiveSip * equitySipRatio;
-    debt += effectiveSip * (1 - equitySipRatio) + state.monthlyRd;
+    const equityPortion = effectiveSip * (target.riskyPct / 100);
+    const safePortion = effectiveSip * (target.safePct / 100);
+
+    const lumpSum = daafLumpSumsByMonth.get(`${year}-${month}`) ?? 0;
+    daaf += safePortion + lumpSum;
+    equity += equityPortion;
+    debt += state.monthlyRd;
 
     if (month === 11) {
       const liquidNetWorth = cash + debt + equity + gold + nps + daaf;
@@ -188,6 +212,10 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
         emi,
         monthlySipInvested: effectiveSip,
         monthlySipOriginal: totalSip,
+        equitySipPortion: equityPortion,
+        safeSipPortion: safePortion,
+        targetRiskyPct: target.riskyPct,
+        targetSafePct: target.safePct,
       });
     }
   }
