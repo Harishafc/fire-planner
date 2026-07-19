@@ -1,5 +1,6 @@
 export interface Holdings {
   cash: number;
+  debtFund: number;
   debt: number;
   equityIndianMF: number;
   equityOverseas: number;
@@ -95,6 +96,7 @@ export interface YearSnapshot {
   [key: string]: number;
   year: number;
   cash: number;
+  debtFund: number;
   debt: number;
   equity: number;
   gold: number;

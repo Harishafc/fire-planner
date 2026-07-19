@@ -21,6 +21,7 @@ export const CHART = {
 
 export const HOLDINGS_COLORS: Record<string, string> = {
   cash: CATEGORICAL.blue,
+  debtFund: '#a16207',
   debt: CATEGORICAL.green,
   equityIndianMF: CATEGORICAL.magenta,
   equityOverseas: CATEGORICAL.yellow,

@@ -22,14 +22,15 @@ export function Overview({ state }: { state: PlannerState }) {
   const cashFlow = cashFlowCheck(state);
 
   const breakdown = [
-    { key: 'cash', label: 'Cash / Emergency', value: h.cash },
-    { key: 'debt', label: 'Debt / Fixed income', value: h.debt + h.travelFund + state.daaf.balance },
-    { key: 'equityIndianMF', label: 'Equity - Indian MF', value: h.equityIndianMF },
-    { key: 'equityOverseas', label: 'Equity - Overseas', value: h.equityOverseas },
-    { key: 'equityStocks', label: 'Equity - Stocks', value: h.equityStocks },
-    { key: 'gold', label: 'Gold', value: h.gold },
-    { key: 'nps', label: 'NPS', value: h.nps },
-    { key: 'epf', label: 'EPF (incl. VPF)', value: h.epf },
+    { key: 'cash', label: 'Cash / Emergency', value: h.cash, safe: true },
+    { key: 'debtFund', label: 'Debt fund', value: h.debtFund + state.daaf.balance, safe: true },
+    { key: 'debt', label: 'FD / RD', value: h.debt + h.travelFund, safe: true },
+    { key: 'equityIndianMF', label: 'Equity - Indian MF', value: h.equityIndianMF, safe: false },
+    { key: 'equityOverseas', label: 'Equity - Overseas', value: h.equityOverseas, safe: false },
+    { key: 'equityStocks', label: 'Equity - Stocks', value: h.equityStocks, safe: false },
+    { key: 'gold', label: 'Gold', value: h.gold, safe: true },
+    { key: 'nps', label: 'NPS', value: h.nps, safe: true },
+    { key: 'epf', label: 'EPF (incl. VPF)', value: h.epf, safe: true },
   ].filter((b) => b.value > 0);
 
   const total = breakdown.reduce((a, b) => a + b.value, 0) || 1;
@@ -39,7 +40,7 @@ export function Overview({ state }: { state: PlannerState }) {
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
       <Card className="lg:col-span-2">
-        <SectionTitle title="Net worth composition" subtitle={`${formatINRFull(netWorth)} · Debt / Fixed income includes DAAF + Travel fund`} />
+        <SectionTitle title="Net worth composition" subtitle={`${formatINRFull(netWorth)} · Debt fund includes your DAAF balance, FD/RD includes Travel fund`} />
         <div className="mb-4 flex h-3 w-full overflow-hidden rounded-full border border-zinc-800">
           {breakdown.map((b) => (
             <div
@@ -63,6 +64,10 @@ export function Overview({ state }: { state: PlannerState }) {
             </div>
           ))}
         </div>
+        <p className="mt-4 text-xs text-zinc-500">
+          <span className="font-medium text-zinc-400">Safe:</span> Cash, Debt fund, FD/RD, Gold, NPS, EPF ·{' '}
+          <span className="font-medium text-zinc-400">Risky:</span> Equity (Indian MF, Overseas, Stocks)
+        </p>
       </Card>
 
       <Card>

@@ -204,7 +204,14 @@ export function Inputs({
         <SectionTitle title="Current holdings" subtitle="Bank balance / emergency fund lives under Cash" />
         <div className="grid grid-cols-2 gap-4">
           <NumberField label="Cash / Emergency fund" value={state.holdings.cash} onChange={(v) => patchHoldings('cash', v)} prefix="₹" />
-          <NumberField label="Debt / Fixed income" value={state.holdings.debt} onChange={(v) => patchHoldings('debt', v)} prefix="₹" />
+          <NumberField
+            label="Debt fund"
+            value={state.holdings.debtFund}
+            onChange={(v) => patchHoldings('debtFund', v)}
+            prefix="₹"
+            hint="Debt mutual funds — DAAF's value is added to this in the net worth view"
+          />
+          <NumberField label="FD / RD" value={state.holdings.debt} onChange={(v) => patchHoldings('debt', v)} prefix="₹" />
           <NumberField label="Equity - Indian MF" value={state.holdings.equityIndianMF} onChange={(v) => patchHoldings('equityIndianMF', v)} prefix="₹" />
           <NumberField label="Equity - Overseas" value={state.holdings.equityOverseas} onChange={(v) => patchHoldings('equityOverseas', v)} prefix="₹" />
           <NumberField label="Equity - Stocks" value={state.holdings.equityStocks} onChange={(v) => patchHoldings('equityStocks', v)} prefix="₹" />

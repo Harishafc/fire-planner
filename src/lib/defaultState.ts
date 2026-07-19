@@ -10,6 +10,7 @@ export const defaultState: PlannerState = {
   monthlyTravelContribution: 5000,
   holdings: {
     cash: 500000,
+    debtFund: 300000,
     debt: 800000,
     equityIndianMF: 1200000,
     equityOverseas: 300000,

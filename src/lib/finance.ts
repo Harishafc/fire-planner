@@ -23,7 +23,7 @@ export function currentAllocation(state: PlannerState): AllocationTarget {
   const daafRisky = (state.daaf.balance * state.daaf.equityEquivalentPct) / 100;
   const daafSafe = state.daaf.balance - daafRisky;
   const risky = equityTotal(h) + daafRisky;
-  const safe = h.cash + h.debt + h.gold + h.nps + h.epf + h.travelFund + daafSafe;
+  const safe = h.cash + h.debtFund + h.debt + h.gold + h.nps + h.epf + h.travelFund + daafSafe;
   return { safePct: (safe / netWorth) * 100, riskyPct: (risky / netWorth) * 100 };
 }
 
@@ -79,7 +79,7 @@ export function equityTotal(h: Holdings): number {
 export function currentNetWorth(state: PlannerState): number {
   const h = state.holdings;
   return (
-    h.cash + h.debt + equityTotal(h) + h.gold + h.nps + h.epf + h.travelFund + state.daaf.balance
+    h.cash + h.debtFund + h.debt + equityTotal(h) + h.gold + h.nps + h.epf + h.travelFund + state.daaf.balance
   );
 }
 
@@ -157,6 +157,7 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
   };
 
   let cash = state.holdings.cash;
+  let debtFund = state.holdings.debtFund;
   let debt = state.holdings.debt;
   let equity = equityTotal(state.holdings);
   let gold = state.holdings.gold;
@@ -192,6 +193,7 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
 
     // growth
     cash *= 1 + mRate.cash;
+    debtFund *= 1 + mRate.debt;
     debt *= 1 + mRate.debt;
     equity *= 1 + mRate.equity;
     gold *= 1 + mRate.gold;
@@ -260,11 +262,12 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
     debt += state.monthlyRd;
 
     if (month === 11) {
-      const liquidNetWorth = cash + debt + equity + gold + nps + epf + travelFund + daaf;
+      const liquidNetWorth = cash + debtFund + debt + equity + gold + nps + epf + travelFund + daaf;
       const monthlyExpenseThisYear = state.monthlyExpense * Math.pow(1 + state.inflationRate / 100, yearsElapsed);
       snapshots.push({
         year,
         cash,
+        debtFund,
         debt,
         equity,
         gold,
