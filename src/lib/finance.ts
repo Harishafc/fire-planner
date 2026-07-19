@@ -249,8 +249,9 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
     daaf *= 1 + mRate.daaf;
     if (land > 0) land *= 1 + mRate.land;
 
-    // land purchase trigger: January of purchase year
-    if (!purchased && year === opts.land.purchaseYear && month === 0) {
+    // land purchase trigger: January of purchase year, or immediately if the purchase year
+    // is already underway (i.e. it's the current year and January has already passed)
+    if (!purchased && year === opts.land.purchaseYear && (month === 0 || year === startYear)) {
       purchased = true;
       const downPayment = Math.min(daaf, opts.land.landPriceEstimate);
       daaf -= downPayment;
@@ -338,6 +339,44 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
   }
 
   return snapshots;
+}
+
+/**
+ * FIRE status: your target corpus (annual expenses x 1/SWR), how close you are today, and the
+ * year/age you're projected to cross it — using your real, land-purchase-adjusted trajectory at
+ * the Expected growth scenario, comparing against inflation-adjusted expenses each year.
+ */
+export interface FireStatus {
+  fireNumberToday: number;
+  netWorthToday: number;
+  progressPct: number;
+  fireYear: number | null;
+  fireAge: number | null;
+  yearsToFire: number | null;
+}
+
+export function fireStatus(state: PlannerState): FireStatus {
+  const multiplier = state.fireSwrPct > 0 ? 100 / state.fireSwrPct : 25;
+  const annualExpenseToday = state.monthlyExpense * 12;
+  const fireNumberToday = annualExpenseToday * multiplier;
+  const netWorthToday = currentNetWorth(state);
+  const progressPct = fireNumberToday > 0 ? (netWorthToday / fireNumberToday) * 100 : 0;
+
+  const startYear = new Date().getFullYear();
+  const snaps = runProjection(state, { land: state.land, deltaPct: 0 });
+
+  let fireYear: number | null = null;
+  for (const snap of snaps) {
+    const fireTargetThatYear = snap.monthlyExpenseThisYear * 12 * multiplier;
+    if (snap.netWorthWithoutLand >= fireTargetThatYear) {
+      fireYear = snap.year;
+      break;
+    }
+  }
+  const fireAge = fireYear !== null ? state.currentAge + (fireYear - startYear) : null;
+  const yearsToFire = fireYear !== null ? fireYear - startYear : null;
+
+  return { fireNumberToday, netWorthToday, progressPct, fireYear, fireAge, yearsToFire };
 }
 
 export function daafBalanceAtYear(state: PlannerState, targetYear: number): number {

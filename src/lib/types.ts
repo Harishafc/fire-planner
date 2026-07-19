@@ -86,6 +86,7 @@ export interface PlannerState {
   salary: SalaryInputs;
   risk: RiskInputs;
   land: LandInputs;
+  fireSwrPct: number;
   comparisonYears: number[];
   projectionEndYear: number;
   scenarioDeltas: ScenarioDelta[];

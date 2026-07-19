@@ -5,6 +5,7 @@ import {
   currentAllocation,
   currentNetWorth,
   equityTotal,
+  fireStatus,
   formatINRFull,
   formatINR,
   monthlyContributionBreakdown,
@@ -23,6 +24,8 @@ export function Overview({ state }: { state: PlannerState }) {
   const cashFlow = cashFlowCheck(state);
   const contrib = monthlyContributionBreakdown(state);
   const contribGap = contrib.riskyPct - target.riskyPct;
+  const fire = fireStatus(state);
+  const fireProgressClamped = Math.min(100, fire.progressPct);
 
   const breakdown = [
     { key: 'cash', label: 'Cash / Emergency', value: h.cash, safe: true },
@@ -84,6 +87,34 @@ export function Overview({ state }: { state: PlannerState }) {
           <StatTile label="Desired liquid buffer" value={`${state.risk.liquidBufferMonths} mo`} sub={formatINR(state.risk.liquidBufferMonths * state.monthlyExpense)} />
           <StatTile label="Equity value (raw)" value={formatINR(equityTotal(h))} />
         </div>
+      </Card>
+
+      <Card className="lg:col-span-3">
+        <SectionTitle
+          title="FIRE — Financial Independence"
+          subtitle={`Target corpus = annual expenses × ${(100 / state.fireSwrPct).toFixed(0)} (${state.fireSwrPct}% safe withdrawal rate), inflation-adjusted each year`}
+        />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatTile label="FIRE number (today)" value={formatINR(fire.fireNumberToday)} sub={`${formatINR(state.monthlyExpense * 12)}/yr expenses × ${(100 / state.fireSwrPct).toFixed(0)}`} />
+          <StatTile label="Net worth (today)" value={formatINR(fire.netWorthToday)} />
+          <StatTile label="Progress" value={`${fire.progressPct.toFixed(0)}%`} sub="of today's FIRE number" />
+          <StatTile
+            label={fire.fireYear !== null ? 'Projected FIRE year' : 'Projected FIRE year'}
+            value={fire.fireYear !== null ? `${fire.fireYear}` : `Beyond ${state.projectionEndYear}`}
+            sub={
+              fire.fireYear !== null
+                ? `Age ${fire.fireAge} · ${fire.yearsToFire} yrs away (Expected growth, land plan included)`
+                : 'Not reached within your projection window'
+            }
+          />
+        </div>
+        <div className="mt-4 flex h-3 w-full overflow-hidden rounded-full border border-zinc-800">
+          <div className="bg-emerald-500" style={{ width: `${fireProgressClamped}%` }} />
+        </div>
+        <p className="mt-3 text-xs text-zinc-500">
+          Uses your liquid/investable net worth (excludes land value) vs. that year's inflation-adjusted expenses, following your
+          Expected-growth trajectory including the planned land purchase and its EMI.
+        </p>
       </Card>
 
       <Card className="lg:col-span-3">

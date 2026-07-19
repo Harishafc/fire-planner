@@ -334,6 +334,22 @@ export function Inputs({
       </Card>
 
       <Card>
+        <SectionTitle
+          title="FIRE assumptions"
+          subtitle="Safe withdrawal rate sets your target corpus: annual expenses × (100 / SWR)"
+        />
+        <div className="grid grid-cols-2 gap-4">
+          <NumberField
+            label="Safe withdrawal rate"
+            value={state.fireSwrPct}
+            onChange={(v) => setState((s) => ({ ...s, fireSwrPct: v }))}
+            suffix="%/yr"
+            hint="4% is the classic FIRE rule of thumb (25x expenses)"
+          />
+        </div>
+      </Card>
+
+      <Card>
         <SectionTitle title="Scenario growth adjustments" subtitle="Delta applied uniformly to equity/debt/gold/NPS/DAAF rates" />
         <div className="grid grid-cols-3 gap-4">
           {state.scenarioDeltas.map((sd, i) => (

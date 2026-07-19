@@ -60,6 +60,7 @@ export const defaultState: PlannerState = {
     loanInterestRate: 9,
     loanTenureYears: 15,
   },
+  fireSwrPct: 4,
   comparisonYears: [currentYear + 1, currentYear + 3, currentYear + 5],
   projectionEndYear: currentYear + 20,
   scenarioDeltas: [
