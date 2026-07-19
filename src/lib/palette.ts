@@ -41,3 +41,8 @@ export const CURVE_COLORS = {
   withoutLand: CATEGORICAL.aqua,
   interest: CATEGORICAL.orange,
 };
+
+export const CASHFLOW_COLORS = {
+  sip: CATEGORICAL.aqua,
+  emi: CATEGORICAL.red,
+};

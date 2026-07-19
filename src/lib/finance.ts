@@ -186,6 +186,8 @@ export function runProjection(state: PlannerState, opts: ProjectionOptions): Yea
         netWorthWithLand: liquidNetWorth + land - loanPrincipal,
         netWorthWithoutLand: liquidNetWorth,
         emi,
+        monthlySipInvested: effectiveSip,
+        monthlySipOriginal: totalSip,
       });
     }
   }

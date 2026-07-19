@@ -83,4 +83,6 @@ export interface YearSnapshot {
   netWorthWithLand: number;
   netWorthWithoutLand: number;
   emi: number;
+  monthlySipInvested: number;
+  monthlySipOriginal: number;
 }

@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import type { PlannerState } from '../lib/types';
 import { calcEMI, daafBalanceAtYear, formatINR, formatINRFull, runProjection } from '../lib/finance';
-import { Card, NumberField, SectionTitle, StatTile } from './ui';
-import { TimeSeriesChart } from './charts';
-import { CURVE_COLORS, SCENARIO_COLORS } from '../lib/palette';
+import { Card, NumberField, Pill, SectionTitle, StatTile } from './ui';
+import { SipVsEmiChart, TimeSeriesChart } from './charts';
+import { CASHFLOW_COLORS, CURVE_COLORS, SCENARIO_COLORS } from '../lib/palette';
 
 export function LandScenario({
   state,
@@ -29,6 +29,11 @@ export function LandScenario({
     [state]
   );
 
+  const totalSip = state.monthlySipEquity + state.monthlySipDebt;
+  const sipAfterEmi = Math.max(0, totalSip - emi);
+  const sipShortfall = emi - totalSip;
+  const cashFlowData = scenarios[0]?.data ?? [];
+
   return (
     <div className="space-y-5">
       <Card>
@@ -46,11 +51,38 @@ export function LandScenario({
           <StatTile label="Loan amount" value={formatINR(loanAmount)} />
           <StatTile label="Monthly EMI" value={formatINRFull(emi)} sub={loanAmount > 0 ? `${state.land.loanTenureYears}yr @ ${state.land.loanInterestRate}%` : 'No loan needed'} />
         </div>
-        {emi > state.monthlySipEquity + state.monthlySipDebt && loanAmount > 0 && (
-          <p className="mt-3 text-xs text-amber-400">
-            EMI exceeds your current total monthly SIP — investable SIP will floor at ₹0 from {state.land.purchaseYear} onward until income/SIP grows.
-          </p>
+      </Card>
+
+      <Card>
+        <SectionTitle
+          title="Monthly SIP vs. EMI"
+          subtitle={`What happens to your equity + debt SIP once the EMI kicks in, starting ${state.land.purchaseYear}`}
+        />
+        <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <StatTile label="SIP before purchase" value={formatINRFull(totalSip)} sub="Equity + Debt SIP today" />
+          <StatTile
+            label={`SIP from ${state.land.purchaseYear} onward`}
+            value={formatINRFull(sipAfterEmi)}
+            sub={sipAfterEmi === 0 ? 'Fully absorbed by EMI' : 'After EMI is deducted'}
+          />
+          <StatTile label="Monthly EMI" value={formatINRFull(emi)} sub={`${state.land.loanTenureYears}yr loan @ ${state.land.loanInterestRate}%`} />
+        </div>
+        {sipShortfall > 0 && loanAmount > 0 && (
+          <div className="mb-4">
+            <Pill tone="rose">
+              EMI is {formatINR(sipShortfall)} more than your SIP — equity/debt investing pauses entirely from {state.land.purchaseYear} until the loan is paid off or SIP grows.
+            </Pill>
+          </div>
         )}
+        <p className="mb-2 text-xs font-medium text-zinc-500">
+          Bars show your actual monthly SIP investment (teal) next to the EMI you owe (red), year by year — the dashed line marks the purchase year.
+        </p>
+        <SipVsEmiChart
+          data={cashFlowData}
+          purchaseYear={state.land.purchaseYear}
+          sipColor={CASHFLOW_COLORS.sip}
+          emiColor={CASHFLOW_COLORS.emi}
+        />
       </Card>
 
       <div className="grid grid-cols-1 gap-5">

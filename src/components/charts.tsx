@@ -1,8 +1,11 @@
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
   Legend,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -84,6 +87,53 @@ export function TimeSeriesChart({
           />
         ))}
       </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+export function SipVsEmiChart({
+  data,
+  purchaseYear,
+  sipColor,
+  emiColor,
+  height = 260,
+}: {
+  data: readonly Record<string, unknown>[];
+  purchaseYear: number;
+  sipColor: string;
+  emiColor: string;
+  height?: number;
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+        <CartesianGrid stroke={CHART.gridline} vertical={false} />
+        <XAxis
+          dataKey="year"
+          stroke={CHART.axis}
+          tick={{ fill: CHART.mutedInk, fontSize: 11 }}
+          tickLine={false}
+          axisLine={{ stroke: CHART.axis }}
+        />
+        <YAxis
+          stroke={CHART.axis}
+          tick={{ fill: CHART.mutedInk, fontSize: 11 }}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(v) => formatINR(v)}
+          width={64}
+        />
+        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+        <Legend wrapperStyle={{ fontSize: 12, color: CHART.secondaryInk }} iconType="circle" iconSize={8} />
+        <ReferenceLine
+          x={purchaseYear}
+          stroke={CHART.secondaryInk}
+          strokeDasharray="4 4"
+          label={{ value: `Purchase (${purchaseYear})`, position: 'top', fill: CHART.secondaryInk, fontSize: 11 }}
+        />
+        <Bar dataKey="monthlySipInvested" name="Monthly SIP invested" fill={sipColor} radius={[3, 3, 0, 0]} />
+        <Bar dataKey="emi" name="Monthly EMI" fill={emiColor} radius={[3, 3, 0, 0]} />
+      </BarChart>
     </ResponsiveContainer>
   );
 }
